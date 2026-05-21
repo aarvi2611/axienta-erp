@@ -1,0 +1,5 @@
+{
+  "collections": ["users", "employees", "leads", "tasks", "attendance", "reports", "notifications", "call_logs", "messages", "departments", "permissions", "activity_logs"],
+  "demoPassword": "Axenta@12345",
+  "roles": ["CEO", "Admin", "Head Manager", "Team Manager", "Sales Executive", "Calling Executive", "Data Scraper", "Operations Team", "HR"]
+}

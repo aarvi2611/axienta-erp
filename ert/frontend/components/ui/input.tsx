@@ -1,0 +1,4 @@
+import * as React from 'react'; import { cn } from '@/lib/utils';
+export const Input=React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({className,...p},ref)=><input ref={ref} className={cn('focus-ring w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-navy-800',className)} {...p}/>); Input.displayName='Input';
+export const Select=({className,...p}:React.SelectHTMLAttributes<HTMLSelectElement>)=><select className={cn('focus-ring w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-navy-800',className)} {...p}/>;
+export const Textarea=({className,...p}:React.TextareaHTMLAttributes<HTMLTextAreaElement>)=><textarea className={cn('focus-ring w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-navy-800',className)} {...p}/>;

@@ -1,0 +1,5 @@
+import { Router } from 'express'; import { db } from '../config/firebaseAdmin'; import { requireAuth, allowRoles } from '../middleware/auth'; import { asyncHandler } from '../utils/asyncHandler';
+const router=Router(); router.use(requireAuth, allowRoles('CEO','Admin','Head Manager','Team Manager','HR'));
+router.get('/summary', asyncHandler(async(_req,res)=>{ const [employees,leads,tasks,attendance]=await Promise.all([db.collection('employees').count().get(),db.collection('leads').count().get(),db.collection('tasks').count().get(),db.collection('attendance').count().get()]); res.json({ totalEmployees:employees.data().count, totalLeads:leads.data().count, totalTasks:tasks.data().count, attendanceRecords:attendance.data().count, revenue:1840000, conversionRate:24.8 }); }));
+router.post('/generate', asyncHandler(async(req,res)=>{ const ref=await db.collection('reports').add({ ...req.body, status:'generated', createdAt:new Date().toISOString() }); res.status(201).json({id:ref.id}); }));
+export default router;
