@@ -1,0 +1,10 @@
+import { Router } from 'express'; import { z } from 'zod'; import { allowRoles, requireAuth } from '../middleware/auth'; import { audit } from '../middleware/audit'; import { asyncHandler } from '../utils/asyncHandler'; import { createEmployee, resetEmployeePassword, deleteEmployee } from '../services/employeeService'; import { db } from '../config/firebaseAdmin';
+const router = Router();
+const employeeSchema = z.object({ name:z.string().min(2), email:z.string().email(), password:z.string().min(8), role:z.string(), department:z.string(), employeeId:z.string().optional(), phone:z.string().optional() });
+router.use(requireAuth);
+router.get('/', allowRoles('CEO','Admin','Head Manager','HR'), asyncHandler(async (_req,res)=>{ const snap=await db.collection('employees').orderBy('createdAt','desc').get(); res.json(snap.docs.map(d=>({id:d.id,...d.data()}))); }));
+router.post('/', allowRoles('CEO','Admin','Head Manager'), audit('employee.create'), asyncHandler(async (req,res)=>{ const data=employeeSchema.parse(req.body); res.status(201).json(await createEmployee(data, req.user!.uid)); }));
+router.patch('/:uid', allowRoles('CEO','Admin','Head Manager','HR'), audit('employee.update'), asyncHandler(async (req,res)=>{ await db.collection('employees').doc(req.params.uid).update({...req.body, updatedAt:new Date().toISOString()}); await db.collection('users').doc(req.params.uid).update({...req.body, updatedAt:new Date().toISOString()}); res.json({ok:true}); }));
+router.delete('/:uid', allowRoles('CEO','Admin','Head Manager'), audit('employee.delete'), asyncHandler(async (req,res)=>{ await deleteEmployee(req.params.uid); res.json({ok:true}); }));
+router.post('/:uid/reset-password', allowRoles('CEO','Admin','Head Manager'), audit('employee.reset_password'), asyncHandler(async (req,res)=>{ const password=req.body.password || `Axenta@${Math.random().toString(36).slice(2,8)}`; res.json(await resetEmployeePassword(req.params.uid,password)); }));
+export default router;
