@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const zod_1 = require("zod");
+const auth_1 = require("../middleware/auth");
+const audit_1 = require("../middleware/audit");
+const asyncHandler_1 = require("../utils/asyncHandler");
+const employeeService_1 = require("../services/employeeService");
+const firebaseAdmin_1 = require("../config/firebaseAdmin");
+const router = (0, express_1.Router)();
+const employeeSchema = zod_1.z.object({ name: zod_1.z.string().min(2), email: zod_1.z.string().email(), password: zod_1.z.string().min(8), role: zod_1.z.string(), department: zod_1.z.string(), employeeId: zod_1.z.string().optional(), phone: zod_1.z.string().optional() });
+router.use(auth_1.requireAuth);
+router.get('/', (0, auth_1.allowRoles)('CEO', 'Admin', 'Head Manager', 'HR'), (0, asyncHandler_1.asyncHandler)(async (_req, res) => { const snap = await firebaseAdmin_1.db.collection('employees').orderBy('createdAt', 'desc').get(); res.json(snap.docs.map(d => ({ id: d.id, ...d.data() }))); }));
+router.post('/', (0, auth_1.allowRoles)('CEO', 'Admin', 'Head Manager'), (0, audit_1.audit)('employee.create'), (0, asyncHandler_1.asyncHandler)(async (req, res) => { const data = employeeSchema.parse(req.body); res.status(201).json(await (0, employeeService_1.createEmployee)(data, req.user.uid)); }));
+router.patch('/:uid', (0, auth_1.allowRoles)('CEO', 'Admin', 'Head Manager', 'HR'), (0, audit_1.audit)('employee.update'), (0, asyncHandler_1.asyncHandler)(async (req, res) => { await firebaseAdmin_1.db.collection('employees').doc(req.params.uid).update({ ...req.body, updatedAt: new Date().toISOString() }); await firebaseAdmin_1.db.collection('users').doc(req.params.uid).update({ ...req.body, updatedAt: new Date().toISOString() }); res.json({ ok: true }); }));
+router.delete('/:uid', (0, auth_1.allowRoles)('CEO', 'Admin', 'Head Manager'), (0, audit_1.audit)('employee.delete'), (0, asyncHandler_1.asyncHandler)(async (req, res) => { await (0, employeeService_1.deleteEmployee)(req.params.uid); res.json({ ok: true }); }));
+router.post('/:uid/reset-password', (0, auth_1.allowRoles)('CEO', 'Admin', 'Head Manager'), (0, audit_1.audit)('employee.reset_password'), (0, asyncHandler_1.asyncHandler)(async (req, res) => { const password = req.body.password || `Axenta@${Math.random().toString(36).slice(2, 8)}`; res.json(await (0, employeeService_1.resetEmployeePassword)(req.params.uid, password)); }));
+exports.default = router;
