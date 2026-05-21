@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const firebaseAdmin_1 = require("../config/firebaseAdmin");
+const auth_1 = require("../middleware/auth");
+const asyncHandler_1 = require("../utils/asyncHandler");
+const router = (0, express_1.Router)();
+router.use(auth_1.requireAuth);
+router.post('/call-log', (0, asyncHandler_1.asyncHandler)(async (req, res) => { const ref = await firebaseAdmin_1.db.collection('call_logs').add({ ...req.body, userId: req.user.uid, createdAt: new Date().toISOString() }); res.status(201).json({ id: ref.id }); }));
+router.post('/whatsapp', (0, asyncHandler_1.asyncHandler)(async (req, res) => { const ref = await firebaseAdmin_1.db.collection('messages').add({ channel: 'whatsapp', ...req.body, userId: req.user.uid, providerStatus: 'queued', createdAt: new Date().toISOString() }); res.status(202).json({ id: ref.id, status: 'queued', note: 'Connect WhatsApp Business API token in production.' }); }));
+exports.default = router;

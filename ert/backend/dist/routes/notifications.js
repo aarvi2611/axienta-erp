@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const firebaseAdmin_1 = require("../config/firebaseAdmin");
+const auth_1 = require("../middleware/auth");
+const asyncHandler_1 = require("../utils/asyncHandler");
+const router = (0, express_1.Router)();
+router.use(auth_1.requireAuth);
+router.get('/', (0, asyncHandler_1.asyncHandler)(async (req, res) => { const snap = await firebaseAdmin_1.db.collection('notifications').where('userId', 'in', [req.user.uid, 'all']).orderBy('createdAt', 'desc').limit(100).get(); res.json(snap.docs.map(d => ({ id: d.id, ...d.data() }))); }));
+router.patch('/:id/read', (0, asyncHandler_1.asyncHandler)(async (req, res) => { await firebaseAdmin_1.db.collection('notifications').doc(req.params.id).update({ read: true }); res.json({ ok: true }); }));
+exports.default = router;

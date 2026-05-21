@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function role() { 
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(userPath) ? get(userPath).data.role : 'User';
+    }
+    function isAdmin() { return signedIn() && role() in ['CEO','Admin','Head Manager']; }
+    function isManager() { return signedIn() && role() in ['CEO','Admin','Head Manager','Team Manager']; }
+    
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isManager() || role() == 'HR');
+      allow update: if signedIn() && request.auth.uid == uid && !('role' in request.resource.data.diff(resource.data).changedKeys());
+      allow create, delete: if isAdmin();
+    }
+    match /employees/{uid} { allow read: if signedIn(); allow write: if isAdmin() || role() == 'HR'; }
+    match /leads/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn();
+      allow delete: if isManager();
+    }
+    match /tasks/{id} { allow read: if signedIn(); allow create: if signedIn(); allow update: if signedIn() && (isManager() || resource.data.assignedTo == request.auth.uid); allow delete: if isManager(); }
+    match /attendance/{id} { allow read: if signedIn(); allow create, update: if signedIn(); allow delete: if isManager() || role() == 'HR'; }
+    match /leave_requests/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn() && (request.auth.uid == resource.data.userId || isManager() || role() == 'HR');
+      allow delete: if isManager() || role() == 'HR';
+    }
+    match /reports/{id} { allow read, write: if signedIn() && role() in ['CEO','Admin','Head Manager','Team Manager','HR']; }
+    match /notifications/{id} { allow read, update: if signedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == 'all'); allow create: if signedIn(); allow delete: if isManager(); }
+    match /call_logs/{id} { 
+      allow read, create, update: if signedIn(); 
+      allow delete: if isManager(); 
+    }
+    match /messages/{id} { allow read, create: if signedIn(); allow update, delete: if isManager(); }
+    match /departments/{id} { allow read: if signedIn(); allow write: if isManager(); }
+    match /permissions/{id} { allow read: if signedIn(); allow write: if isManager(); }
+    match /activity_logs/{id} { allow read: if isManager(); allow create: if signedIn(); allow update, delete: if false; }
+    match /operations/{id} { 
+      allow read, write: if signedIn(); 
+    }
+  }
+}

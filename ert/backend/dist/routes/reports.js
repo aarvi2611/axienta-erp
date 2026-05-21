@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const firebaseAdmin_1 = require("../config/firebaseAdmin");
+const auth_1 = require("../middleware/auth");
+const asyncHandler_1 = require("../utils/asyncHandler");
+const router = (0, express_1.Router)();
+router.use(auth_1.requireAuth, (0, auth_1.allowRoles)('CEO', 'Admin', 'Head Manager', 'Team Manager', 'HR'));
+router.get('/summary', (0, asyncHandler_1.asyncHandler)(async (_req, res) => { const [employees, leads, tasks, attendance] = await Promise.all([firebaseAdmin_1.db.collection('employees').count().get(), firebaseAdmin_1.db.collection('leads').count().get(), firebaseAdmin_1.db.collection('tasks').count().get(), firebaseAdmin_1.db.collection('attendance').count().get()]); res.json({ totalEmployees: employees.data().count, totalLeads: leads.data().count, totalTasks: tasks.data().count, attendanceRecords: attendance.data().count, revenue: 1840000, conversionRate: 24.8 }); }));
+router.post('/generate', (0, asyncHandler_1.asyncHandler)(async (req, res) => { const ref = await firebaseAdmin_1.db.collection('reports').add({ ...req.body, status: 'generated', createdAt: new Date().toISOString() }); res.status(201).json({ id: ref.id }); }));
+exports.default = router;
