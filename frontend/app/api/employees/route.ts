@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/server/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/server/firebase-admin';
 import {
   assertRole,
   handleRouteError,
@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireApiUser(request);
     assertRole(user, ['CEO', 'Admin', 'Head Manager', 'HR']);
+    const adminDb = getAdminDb();
 
     const snapshot = await adminDb
       .collection('employees')
@@ -39,6 +40,8 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireApiUser(request);
     assertRole(user, ['CEO', 'Admin', 'Head Manager']);
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
 
     const payload = employeeCreateSchema.parse(await request.json());
     const employeeId = payload.employeeId || buildEmployeeId(payload.role);

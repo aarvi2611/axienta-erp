@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/server/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/server/firebase-admin';
 import {
   assertRole,
   handleRouteError,
@@ -21,6 +21,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireApiUser(request);
     assertRole(user, ['CEO', 'Admin', 'Head Manager', 'HR']);
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
 
     const updates = employeeUpdateSchema.parse(await request.json());
     const timestamp = new Date().toISOString();
@@ -75,6 +77,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireApiUser(request);
     assertRole(user, ['CEO', 'Admin', 'Head Manager']);
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
 
     await Promise.all([
       adminDb.collection('users').doc(context.params.uid).delete(),

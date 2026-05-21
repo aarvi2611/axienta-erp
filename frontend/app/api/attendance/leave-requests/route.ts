@@ -4,7 +4,7 @@ import {
   handleRouteError,
   requireApiUser
 } from '@/lib/server/api';
-import { adminDb } from '@/lib/server/firebase-admin';
+import { getAdminDb } from '@/lib/server/firebase-admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireApiUser(request);
     const isPrivileged = privilegedRoles.includes(user.role);
+    const adminDb = getAdminDb();
 
     const query = isPrivileged
       ? adminDb.collection('leave_requests')

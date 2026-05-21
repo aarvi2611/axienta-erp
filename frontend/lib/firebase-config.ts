@@ -20,14 +20,26 @@ const missingPublicEnvKeys = Object.entries(publicFirebaseEnv)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
+const fallbackProjectId = 'axienta-build-placeholder';
+
 export const firebaseConfig = {
-  apiKey: publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  apiKey:
+    publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_API_KEY ||
+    'AIzaSyD0000000000000000000000000000000000',
+  authDomain:
+    publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
+    `${fallbackProjectId}.firebaseapp.com`,
+  projectId:
+    publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID || fallbackProjectId,
+  storageBucket:
+    publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+    `${fallbackProjectId}.appspot.com`,
   messagingSenderId:
-    publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_APP_ID,
+    publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ||
+    '000000000000',
+  appId:
+    publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_APP_ID ||
+    '1:000000000000:web:0000000000000000000000',
   measurementId: publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 

@@ -3,7 +3,7 @@ import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import type { Role, UserProfile } from '@/types';
-import { adminAuth, adminDb } from './firebase-admin';
+import { getAdminAuth, getAdminDb } from './firebase-admin';
 
 export type ApiUser = {
   uid: string;
@@ -100,6 +100,8 @@ export async function requireApiUser(request: NextRequest): Promise<ApiUser> {
   }
 
   try {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
     const decoded = await adminAuth.verifyIdToken(token);
     const userRef = adminDb.collection('users').doc(decoded.uid);
     let snapshot = await userRef.get();
@@ -151,6 +153,7 @@ export async function writeAuditLog(
   action: string,
   details: Record<string, unknown> = {}
 ) {
+  const adminDb = getAdminDb();
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') ||
