@@ -20,12 +20,6 @@ const missingPublicEnvKeys = Object.entries(publicFirebaseEnv)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
-if (missingPublicEnvKeys.length) {
-  throw new Error(
-    `Missing Firebase public env vars: ${missingPublicEnvKeys.join(', ')}`
-  );
-}
-
 export const firebaseConfig = {
   apiKey: publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: publicFirebaseEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -45,3 +39,11 @@ export const firebaseConfigFingerprint = [
   firebaseConfig.projectId,
   firebaseConfig.appId
 ].join('|');
+
+export function assertPublicFirebaseConfig() {
+  if (missingPublicEnvKeys.length) {
+    throw new Error(
+      `Missing Firebase public env vars: ${missingPublicEnvKeys.join(', ')}`
+    );
+  }
+}

@@ -1,10 +1,6 @@
 import 'server-only';
 
 import admin from 'firebase-admin';
-import {
-  firebaseProjectId,
-  firebaseStorageBucket
-} from '@/lib/firebase-config';
 
 type RawServiceAccount = admin.ServiceAccount & {
   client_email?: string;
@@ -49,13 +45,15 @@ function resolveFirebaseAdminSettings() {
   const serviceAccount = parseServiceAccount();
   const envProjectId = process.env.FIREBASE_PROJECT_ID?.trim() || '';
   const envStorageBucket = process.env.FIREBASE_STORAGE_BUCKET?.trim() || '';
+  const publicProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() || '';
+  const publicStorageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() || '';
   const serviceAccountProjectId =
     serviceAccount?.project_id?.trim() ||
     serviceAccount?.projectId?.trim() ||
     '';
 
   const projectId =
-    envProjectId || firebaseProjectId || serviceAccountProjectId;
+    envProjectId || serviceAccountProjectId || publicProjectId;
 
   if (!projectId) {
     throw new Error(
@@ -69,9 +67,9 @@ function resolveFirebaseAdminSettings() {
     );
   }
 
-  if (firebaseProjectId && serviceAccountProjectId && firebaseProjectId !== serviceAccountProjectId) {
+  if (publicProjectId && serviceAccountProjectId && publicProjectId !== serviceAccountProjectId) {
     throw new Error(
-      `Firebase project mismatch: NEXT_PUBLIC_FIREBASE_PROJECT_ID is ${firebaseProjectId} but the service account belongs to ${serviceAccountProjectId}.`
+      `Firebase project mismatch: NEXT_PUBLIC_FIREBASE_PROJECT_ID is ${publicProjectId} but the service account belongs to ${serviceAccountProjectId}.`
     );
   }
 
@@ -81,7 +79,7 @@ function resolveFirebaseAdminSettings() {
       : admin.credential.applicationDefault(),
     projectId,
     storageBucket:
-      envStorageBucket || firebaseStorageBucket || `${projectId}.firebasestorage.app`
+      envStorageBucket || publicStorageBucket || `${projectId}.firebasestorage.app`
   };
 }
 

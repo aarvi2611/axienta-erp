@@ -3,9 +3,13 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
-import { firebaseConfig } from './firebase-config';
+import { assertPublicFirebaseConfig, firebaseConfig } from './firebase-config';
 
 function initClientApp() {
+  if (typeof window !== 'undefined') {
+    assertPublicFirebaseConfig();
+  }
+
   const existingApp = getApps()[0];
 
   if (existingApp) {
