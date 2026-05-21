@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/server/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/server/firebase-admin';
 import {
   assertRole,
   handleRouteError,
@@ -26,14 +26,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const timestamp = new Date().toISOString();
 
     await Promise.all([
-      adminDb.collection('employees').doc(context.params.uid).set(
+      getAdminDb().collection('employees').doc(context.params.uid).set(
         {
           ...updates,
           updatedAt: timestamp
         },
         { merge: true }
       ),
-      adminDb.collection('users').doc(context.params.uid).set(
+      getAdminDb().collection('users').doc(context.params.uid).set(
         {
           ...updates,
           updatedAt: timestamp
@@ -43,7 +43,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     ]);
 
     if (updates.name || updates.email || updates.status) {
-      await adminAuth.updateUser(context.params.uid, {
+      await getAdminAuth().updateUser(context.params.uid, {
         displayName: updates.name,
         email: updates.email,
         disabled: updates.status ? updates.status === 'inactive' : undefined
@@ -51,10 +51,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     if (updates.role || updates.employeeId) {
-      const authUser = await adminAuth.getUser(context.params.uid);
+      const authUser = await getAdminAuth().getUser(context.params.uid);
       const existingClaims = authUser.customClaims || {};
 
-      await adminAuth.setCustomUserClaims(context.params.uid, {
+      await getAdminAuth().setCustomUserClaims(context.params.uid, {
         ...existingClaims,
         role: updates.role || existingClaims.role,
         employeeId: updates.employeeId || existingClaims.employeeId
@@ -77,9 +77,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     assertRole(user, ['CEO', 'Admin', 'Head Manager']);
 
     await Promise.all([
-      adminDb.collection('users').doc(context.params.uid).delete(),
-      adminDb.collection('employees').doc(context.params.uid).delete(),
-      adminAuth.deleteUser(context.params.uid)
+      getAdminDb().collection('users').doc(context.params.uid).delete(),
+      getAdminDb().collection('employees').doc(context.params.uid).delete(),
+      getAdminAuth().deleteUser(context.params.uid)
     ]);
 
     await writeAuditLog(request, user, 'employee.delete', {

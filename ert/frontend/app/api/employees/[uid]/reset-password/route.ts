@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { adminAuth, adminDb } from '@/lib/server/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/server/firebase-admin';
 import {
   assertRole,
   handleRouteError,
@@ -33,8 +33,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const payload = resetPasswordSchema.parse(await request.json());
     const password = payload.password || generatePassword();
 
-    await adminAuth.updateUser(context.params.uid, { password });
-    await adminDb.collection('notifications').add({
+    await getAdminAuth().updateUser(context.params.uid, { password });
+    await getAdminDb().collection('notifications').add({
       userId: context.params.uid,
       type: 'password_reset',
       title: 'Password reset by admin',

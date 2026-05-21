@@ -3,7 +3,7 @@ import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import type { Role, UserProfile } from '@/types';
-import { adminAuth, adminDb } from './firebase-admin';
+import { getAdminAuth, getAdminDb } from './firebase-admin';
 
 export type ApiUser = {
   uid: string;
@@ -100,8 +100,8 @@ export async function requireApiUser(request: NextRequest): Promise<ApiUser> {
   }
 
   try {
-    const decoded = await adminAuth.verifyIdToken(token);
-    const userRef = adminDb.collection('users').doc(decoded.uid);
+    const decoded = await getAdminAuth().verifyIdToken(token);
+    const userRef = getAdminDb().collection('users').doc(decoded.uid);
     let snapshot = await userRef.get();
 
     if (!snapshot.exists) {
@@ -156,7 +156,7 @@ export async function writeAuditLog(
     request.headers.get('x-real-ip') ||
     '';
 
-  await adminDb.collection('activity_logs').add({
+  await getAdminDb().collection('activity_logs').add({
     action,
     userId: user.uid,
     role: user.role,

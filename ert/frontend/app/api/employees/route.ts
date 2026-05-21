@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/server/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/server/firebase-admin';
 import {
   assertRole,
   handleRouteError,
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const user = await requireApiUser(request);
     assertRole(user, ['CEO', 'Admin', 'Head Manager', 'HR']);
 
-    const snapshot = await adminDb
+    const snapshot = await getAdminDb()
       .collection('employees')
       .orderBy('createdAt', 'desc')
       .get();
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const payload = employeeCreateSchema.parse(await request.json());
     const employeeId = payload.employeeId || buildEmployeeId(payload.role);
-    const employeeAuthUser = await adminAuth.createUser({
+    const employeeAuthUser = await getAdminAuth().createUser({
       email: payload.email,
       password: payload.password,
       displayName: payload.name,
@@ -72,9 +72,9 @@ export async function POST(request: NextRequest) {
     };
 
     await Promise.all([
-      adminDb.collection('users').doc(employeeAuthUser.uid).set(profile),
-      adminDb.collection('employees').doc(employeeAuthUser.uid).set(profile),
-      adminAuth.setCustomUserClaims(employeeAuthUser.uid, {
+      getAdminDb().collection('users').doc(employeeAuthUser.uid).set(profile),
+      getAdminDb().collection('employees').doc(employeeAuthUser.uid).set(profile),
+      getAdminAuth().setCustomUserClaims(employeeAuthUser.uid, {
         role: payload.role,
         employeeId
       })

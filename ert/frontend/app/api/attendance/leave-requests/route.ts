@@ -4,7 +4,7 @@ import {
   handleRouteError,
   requireApiUser
 } from '@/lib/server/api';
-import { adminDb } from '@/lib/server/firebase-admin';
+import { getAdminDb } from '@/lib/server/firebase-admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
     const isPrivileged = privilegedRoles.includes(user.role);
 
     const query = isPrivileged
-      ? adminDb.collection('leave_requests')
-      : adminDb.collection('leave_requests').where('userId', '==', user.uid);
+      ? getAdminDb().collection('leave_requests')
+      : getAdminDb().collection('leave_requests').where('userId', '==', user.uid);
 
     const snapshot = await query.get();
     const requests = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));

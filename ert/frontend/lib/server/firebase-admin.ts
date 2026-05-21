@@ -106,7 +106,19 @@ function initFirebaseAdmin() {
   return admin;
 }
 
-export const firebaseAdmin = initFirebaseAdmin();
-export const adminDb = firebaseAdmin.firestore();
-export const adminAuth = firebaseAdmin.auth();
 export const adminFieldValue = admin.firestore.FieldValue;
+
+function getAdmin() {
+  if (!admin.apps.length) {
+    initFirebaseAdmin();
+  }
+  return admin;
+}
+
+export function getAdminDb(): admin.firestore.Firestore {
+  return getAdmin().firestore();
+}
+
+export function getAdminAuth(): admin.auth.Auth {
+  return getAdmin().auth();
+}

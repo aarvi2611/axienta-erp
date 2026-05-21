@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, adminFieldValue } from '@/lib/server/firebase-admin';
+import { getAdminDb, adminFieldValue } from '@/lib/server/firebase-admin';
 import {
   assertRole,
   handleRouteError,
@@ -23,7 +23,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const payload = leaveRequestUpdateSchema.parse(await request.json());
 
-    await adminDb.collection('leave_requests').doc(context.params.id).update({
+    await getAdminDb().collection('leave_requests').doc(context.params.id).update({
       ...payload,
       updatedAt: adminFieldValue.serverTimestamp()
     });

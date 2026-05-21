@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, adminFieldValue } from '@/lib/server/firebase-admin';
+import { getAdminDb, adminFieldValue } from '@/lib/server/firebase-admin';
 import {
   handleRouteError,
   requireApiUser
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const user = await requireApiUser(request);
     const payload = leaveRequestCreateSchema.parse(await request.json());
 
-    const ref = await adminDb.collection('leave_requests').add({
+    const ref = await getAdminDb().collection('leave_requests').add({
       ...payload,
       userId: user.uid,
       userName: user.name || user.email || 'Unknown',
