@@ -4,7 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getIdTokenResult, onIdTokenChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, initAnalytics } from '@/lib/firebase';
-import { firebaseConfigFingerprint } from '@/lib/firebase-config';
+import {
+  firebaseConfigFingerprint,
+  hasPublicFirebaseConfig,
+  missingPublicFirebaseEnvKeys
+} from '@/lib/firebase-config';
 import { employees } from '@/lib/demo-data';
 import { Role, UserProfile } from '@/types';
 
@@ -18,6 +22,10 @@ const supportedRoles: Role[] = ['CEO','Admin','Head Manager','Team Manager','Sal
 
 function normalizeRole(role: unknown): Role {
   return supportedRoles.includes(role as Role) ? (role as Role) : 'Sales Executive';
+}
+
+function getFirebaseConfigError() {
+  return `Missing Firebase public env vars in Vercel: ${missingPublicFirebaseEnvKeys.join(', ')}`;
 }
 
 async function syncFirebaseConfigFingerprint() {
@@ -65,6 +73,16 @@ export function Providers({children}:{children:React.ReactNode}) {
   let unsub: () => void = () => {};
 
   const bootstrap = async () => {
+    if (!hasPublicFirebaseConfig) {
+      console.error(getFirebaseConfigError());
+      const demo = localStorage.getItem(DEMO_PROFILE_STORAGE_KEY);
+      if (active) {
+        setProfile(demo ? JSON.parse(demo) : null);
+        setLoading(false);
+      }
+      return;
+    }
+
     initAnalytics();
 
     try {
@@ -102,6 +120,6 @@ export function Providers({children}:{children:React.ReactNode}) {
     unsub();
   };
  },[]);
- const value = useMemo<AuthCtx>(()=>({ user, profile, loading, login: async(e,p)=>{ await signInWithEmailAndPassword(auth,e,p); }, logout: async()=>{ localStorage.removeItem(DEMO_PROFILE_STORAGE_KEY); setProfile(null); await signOut(auth); }, reset:(email)=>sendPasswordResetEmail(auth,email), updateProfileData: async(data)=>{ if(!profile) return; const next={...profile,...data}; setProfile(next); if(user) await updateDoc(doc(db,'users',user.uid), data); else localStorage.setItem(DEMO_PROFILE_STORAGE_KEY, JSON.stringify(next)); }, demoLogin:(role='CEO')=>{ const p={...employees.find(e=>e.role===role)!}; localStorage.setItem(DEMO_PROFILE_STORAGE_KEY,JSON.stringify(p)); setProfile(p); }}),[user,profile,loading]);
+ const value = useMemo<AuthCtx>(()=>({ user, profile, loading, login: async(e,p)=>{ if(!hasPublicFirebaseConfig) throw new Error(getFirebaseConfigError()); await signInWithEmailAndPassword(auth,e,p); }, logout: async()=>{ localStorage.removeItem(DEMO_PROFILE_STORAGE_KEY); setProfile(null); if(hasPublicFirebaseConfig) await signOut(auth); }, reset:(email)=>{ if(!hasPublicFirebaseConfig) return Promise.reject(new Error(getFirebaseConfigError())); return sendPasswordResetEmail(auth,email); }, updateProfileData: async(data)=>{ if(!profile) return; const next={...profile,...data}; setProfile(next); if(user && hasPublicFirebaseConfig) await updateDoc(doc(db,'users',user.uid), data); else localStorage.setItem(DEMO_PROFILE_STORAGE_KEY, JSON.stringify(next)); }, demoLogin:(role='CEO')=>{ const p={...employees.find(e=>e.role===role)!}; localStorage.setItem(DEMO_PROFILE_STORAGE_KEY,JSON.stringify(p)); setProfile(p); }}),[user,profile,loading]);
  return <QueryClientProvider client={queryClient}><AuthContext.Provider value={value}>{children}</AuthContext.Provider></QueryClientProvider>;
 }

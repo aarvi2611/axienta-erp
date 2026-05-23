@@ -20,6 +20,9 @@ const missingPublicEnvKeys = Object.entries(publicFirebaseEnv)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
+export const missingPublicFirebaseEnvKeys = missingPublicEnvKeys;
+export const hasPublicFirebaseConfig = missingPublicEnvKeys.length === 0;
+
 const fallbackProjectId = 'axienta-build-placeholder';
 
 export const firebaseConfig = {

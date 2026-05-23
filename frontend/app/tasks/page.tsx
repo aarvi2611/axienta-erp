@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Eye, RotateCcw, Send, X } from 'lucide-react';
 import { serverTimestamp } from 'firebase/firestore';
 import { AppShell } from '@/components/layout/app-shell';
@@ -101,6 +101,15 @@ export default function Tasks() {
     () => tasks.filter((task) => task.status === 'Submitted for Review'),
     [tasks]
   );
+
+  useEffect(() => {
+    if (!selectedTask) return;
+
+    const liveTask = tasks.find((task) => task.id === selectedTask.id);
+    if (liveTask) {
+      setSelectedTask(liveTask);
+    }
+  }, [selectedTask?.id, tasks]);
 
   const handleCreateTask = async () => {
     if (!form.title || !form.assignedTo || !form.deadline) {
