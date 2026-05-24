@@ -7,7 +7,7 @@ export const routePermissions: Record<string, Role[]> = {
   '/tasks': roles,
   '/employees': ['CEO','Admin','Head Manager','HR'],
   '/reports': ['CEO','Admin','Head Manager','Team Manager','HR'],
-  '/attendance': ['CEO','Admin','Head Manager','HR'],
+  '/attendance': roles,
   '/notifications': roles,
   '/settings': roles,
   '/calling': ['CEO','Admin','Head Manager','Team Manager','Calling Executive','Sales Executive'],

@@ -18,6 +18,8 @@ export const useAuth = () => { const v = useContext(AuthContext); if(!v) throw n
 
 const DEMO_PROFILE_STORAGE_KEY = 'Axienta-demo-profile';
 const FIREBASE_CONFIG_STORAGE_KEY = 'Axienta-firebase-config';
+const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000;
+const ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'] as const;
 const supportedRoles: Role[] = ['CEO','Admin','Head Manager','Team Manager','Sales Executive','Calling Executive','Data Scraper','Operations Team','HR'];
 
 function normalizeRole(role: unknown): Role {
@@ -121,5 +123,45 @@ export function Providers({children}:{children:React.ReactNode}) {
   };
  },[]);
  const value = useMemo<AuthCtx>(()=>({ user, profile, loading, login: async(e,p)=>{ if(!hasPublicFirebaseConfig) throw new Error(getFirebaseConfigError()); await signInWithEmailAndPassword(auth,e,p); }, logout: async()=>{ localStorage.removeItem(DEMO_PROFILE_STORAGE_KEY); setProfile(null); if(hasPublicFirebaseConfig) await signOut(auth); }, reset:(email)=>{ if(!hasPublicFirebaseConfig) return Promise.reject(new Error(getFirebaseConfigError())); return sendPasswordResetEmail(auth,email); }, updateProfileData: async(data)=>{ if(!profile) return; const next={...profile,...data}; setProfile(next); if(user && hasPublicFirebaseConfig) await updateDoc(doc(db,'users',user.uid), data); else localStorage.setItem(DEMO_PROFILE_STORAGE_KEY, JSON.stringify(next)); }, demoLogin:(role='CEO')=>{ const p={...employees.find(e=>e.role===role)!}; localStorage.setItem(DEMO_PROFILE_STORAGE_KEY,JSON.stringify(p)); setProfile(p); }}),[user,profile,loading]);
+ useEffect(()=>{
+  if(!profile || typeof window === 'undefined') return;
+
+  let timeoutId: number | undefined;
+  let lastActivityAt = Date.now();
+
+  const logoutAfterInactivity = () => {
+    void value.logout();
+  };
+
+  const scheduleLogout = () => {
+    if (timeoutId) window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(logoutAfterInactivity, INACTIVITY_TIMEOUT_MS);
+  };
+
+  const markActivity = () => {
+    lastActivityAt = Date.now();
+    scheduleLogout();
+  };
+
+  const checkElapsedTime = () => {
+    if (Date.now() - lastActivityAt >= INACTIVITY_TIMEOUT_MS) {
+      logoutAfterInactivity();
+      return;
+    }
+    scheduleLogout();
+  };
+
+  ACTIVITY_EVENTS.forEach((eventName) => window.addEventListener(eventName, markActivity, { passive: true }));
+  window.addEventListener('focus', checkElapsedTime);
+  document.addEventListener('visibilitychange', checkElapsedTime);
+  scheduleLogout();
+
+  return () => {
+    if (timeoutId) window.clearTimeout(timeoutId);
+    ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, markActivity));
+    window.removeEventListener('focus', checkElapsedTime);
+    document.removeEventListener('visibilitychange', checkElapsedTime);
+  };
+ },[profile,value]);
  return <QueryClientProvider client={queryClient}><AuthContext.Provider value={value}>{children}</AuthContext.Provider></QueryClientProvider>;
 }
