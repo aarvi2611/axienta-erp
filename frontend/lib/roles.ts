@@ -12,6 +12,7 @@ export const routePermissions: Record<string, Role[]> = {
   '/settings': roles,
   '/calling': ['CEO','Admin','Head Manager','Team Manager','Calling Executive','Sales Executive'],
   '/hr': ['CEO','Admin','Head Manager','HR'],
+  '/letters': ['CEO','Head Manager','HR'],
   '/operations': ['CEO','Admin','Head Manager','Operations Team'],
   '/data-scraper': ['CEO','Admin','Head Manager','Team Manager','Data Scraper']
 };

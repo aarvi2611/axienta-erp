@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { AppShell } from '@/components/layout/app-shell';
 import { PageHeader } from '@/components/dashboard/dashboard-components';
 import { Card } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { auth } from '@/lib/firebase';
 import { API_URL } from '@/lib/api';
 import { authenticatedFetch } from '@/lib/auth-fetch';
 import { UserProfile } from '@/types';
+import { FileSignature } from 'lucide-react';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
@@ -182,7 +184,14 @@ export default function HR() {
       <PageHeader
         title="HR Module"
         subtitle="Employee payroll, leave, performance and HR records in one place."
-        actions={<Button onClick={() => setSelectedEmployee(null)}>Refresh</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Link href="/letters" className="focus-ring inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold transition hover:bg-slate-50">
+              <FileSignature size={16} /> Letters
+            </Link>
+            <Button onClick={() => setSelectedEmployee(null)}>Refresh</Button>
+          </div>
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-4 mt-4">
