@@ -25,6 +25,34 @@ html { scroll-behavior:smooth; } body { @apply bg-slate-50 text-slate-900 dark:b
 .letter-footer { position: absolute; left: 48px; right: 48px; bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; color: #334155; font-size: 11px; border-top: 2px solid #0b3973; padding-top: 12px; }
 .signature-line { width: 170px; border-top: 1px solid #64748b; margin: 30px 0 6px; }
 
+.salary-slip-page { box-sizing: border-box; width: min(100%, 794px); min-height: 1123px; margin: 0 auto; padding: 38px 48px; background: #fff; color: #0f172a; border: 1px solid #e2e8f0; position: relative; overflow: hidden; }
+.salary-slip-page::before { content: ""; position: absolute; inset: 0; border-top: 12px solid #0b3973; pointer-events: none; }
+.salary-slip-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; border-bottom: 3px solid #f47c14; padding-bottom: 16px; position: relative; z-index: 1; }
+.salary-slip-logo { width: 82px; height: 62px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+.salary-slip-logo img { width: 76px; height: 54px; object-fit: contain; }
+.salary-slip-header h1 { color: #0b3973; font-size: 24px; font-weight: 900; line-height: 1.1; }
+.salary-slip-header p { color: #475569; font-size: 11px; line-height: 1.5; }
+.salary-slip-title { border-radius: 999px; background: #fff3e8; border: 1px solid #fed7aa; color: #0b3973; font-size: 12px; font-weight: 900; letter-spacing: .12em; padding: 7px 14px; text-transform: uppercase; white-space: nowrap; }
+.salary-slip-meta, .salary-slip-employee { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+.salary-slip-meta div, .salary-slip-employee div { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; background: #f8fafc; }
+.salary-slip-meta span, .salary-slip-employee span { display: block; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.salary-slip-meta b, .salary-slip-employee b { display: block; margin-top: 4px; color: #0f172a; font-size: 12px; overflow-wrap: anywhere; }
+.salary-slip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+.salary-slip-grid table { width: 100%; border-collapse: collapse; font-size: 12px; overflow: hidden; border-radius: 12px; border: 1px solid #e2e8f0; }
+.salary-slip-grid th { background: #0b3973; color: #fff; text-align: left; padding: 10px; }
+.salary-slip-grid td { border-top: 1px solid #e2e8f0; padding: 10px; vertical-align: top; }
+.salary-slip-grid td:last-child { text-align: right; font-weight: 700; }
+.salary-slip-grid .total td { background: #f8fafc; color: #0b3973; font-weight: 900; }
+.salary-slip-net { margin-top: 18px; border: 2px solid #0b3973; border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; color: #0b3973; }
+.salary-slip-net span { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
+.salary-slip-net b { font-size: 24px; }
+.salary-slip-footer { position: absolute; left: 48px; right: 48px; bottom: 58px; display: flex; align-items: flex-end; justify-content: space-between; border-top: 2px solid #0b3973; padding-top: 18px; font-size: 12px; }
+.salary-slip-signature { text-align: center; min-width: 190px; }
+.salary-slip-signature div { border-top: 1px solid #64748b; margin: 34px 0 8px; }
+.salary-slip-signature p { font-weight: 800; }
+.salary-slip-signature span { color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+.salary-slip-note { position: absolute; left: 48px; right: 48px; bottom: 24px; color: #64748b; font-size: 10px; text-align: center; }
+
 @media print {
   @page { size: A4; margin: 0; }
   html, body { width: 210mm; height: 297mm; margin: 0 !important; overflow: hidden !important; background: white !important; }
@@ -47,4 +75,26 @@ html { scroll-behavior:smooth; } body { @apply bg-slate-50 text-slate-900 dark:b
   .letter-content { font-size: 9pt; line-height: 1.52; }
   .letter-footer { left: 12mm; right: 12mm; bottom: 7mm; padding-top: 3mm; }
   .signature-line { width: 42mm; margin: 8mm 0 1.5mm; }
+  .salary-slip-page { box-sizing: border-box; width: 210mm !important; height: 297mm !important; min-height: 297mm !important; margin: 0 !important; padding: 10mm 12mm 8mm !important; border: 0 !important; box-shadow: none !important; page-break-after: avoid; }
+  .salary-slip-page::before { border-top-width: 3mm; }
+  .salary-slip-header { padding-bottom: 4mm; }
+  .salary-slip-logo { width: 22mm; height: 16mm; border-radius: 3mm; }
+  .salary-slip-logo img { width: 20mm; height: 14mm; }
+  .salary-slip-header h1 { font-size: 17pt; }
+  .salary-slip-header p { font-size: 7.5pt; }
+  .salary-slip-title { font-size: 8pt; padding: 2mm 4mm; }
+  .salary-slip-meta, .salary-slip-employee { gap: 2mm; margin-top: 4mm; }
+  .salary-slip-meta div, .salary-slip-employee div { padding: 2mm; border-radius: 2.5mm; }
+  .salary-slip-meta span, .salary-slip-employee span { font-size: 6.5pt; }
+  .salary-slip-meta b, .salary-slip-employee b { font-size: 8pt; }
+  .salary-slip-grid { gap: 4mm; margin-top: 5mm; }
+  .salary-slip-grid table { font-size: 8pt; }
+  .salary-slip-grid th, .salary-slip-grid td { padding: 2.5mm; }
+  .salary-slip-net { margin-top: 5mm; padding: 3mm 4mm; border-radius: 3mm; }
+  .salary-slip-net span { font-size: 8pt; }
+  .salary-slip-net b { font-size: 18pt; }
+  .salary-slip-footer { left: 12mm; right: 12mm; bottom: 16mm; padding-top: 4mm; font-size: 8pt; }
+  .salary-slip-signature { min-width: 44mm; }
+  .salary-slip-signature div { margin: 10mm 0 2mm; }
+  .salary-slip-note { left: 12mm; right: 12mm; bottom: 7mm; font-size: 7pt; }
 }

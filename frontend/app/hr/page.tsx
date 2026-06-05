@@ -14,7 +14,7 @@ import { auth, db } from '@/lib/firebase';
 import { API_URL } from '@/lib/api';
 import { authenticatedFetch } from '@/lib/auth-fetch';
 import { SalarySlip, UserProfile } from '@/types';
-import { FileSignature, Send, Wallet } from 'lucide-react';
+import { Download, FileSignature, Send, Wallet } from 'lucide-react';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
@@ -23,6 +23,28 @@ function formatCurrency(value: number) {
 function currentSalaryMonth() {
   return new Date().toISOString().slice(0, 7);
 }
+
+type SalarySlipForm = {
+  hra: number;
+  conveyance: number;
+  incentives: number;
+  deductions: number;
+  deductionReason: string;
+  workingDays: number;
+  paidDays: number;
+  signatureName: string;
+};
+
+const defaultSalarySlipForm: SalarySlipForm = {
+  hra: 0,
+  conveyance: 0,
+  incentives: 0,
+  deductions: 0,
+  deductionReason: '',
+  workingDays: 30,
+  paidDays: 30,
+  signatureName: 'Authorized Signatory'
+};
 
 export default function HR() {
   const { data: employees } = useEmployees();
@@ -48,11 +70,8 @@ export default function HR() {
   const [leaveTo, setLeaveTo] = useState(new Date().toISOString().split('T')[0]);
   const [salarySlips, setSalarySlips] = useState<SalarySlip[]>([]);
   const [salaryMonth, setSalaryMonth] = useState(currentSalaryMonth());
-  const [hra, setHra] = useState(0);
-  const [conveyance, setConveyance] = useState(0);
-  const [incentives, setIncentives] = useState(0);
-  const [deductions, setDeductions] = useState(0);
-  const [deductionReason, setDeductionReason] = useState('');
+  const [salarySlipForms, setSalarySlipForms] = useState<Record<string, SalarySlipForm>>({});
+  const [printSalarySlip, setPrintSalarySlip] = useState<SalarySlip | null>(null);
   const [salaryMessage, setSalaryMessage] = useState('');
   const [salaryError, setSalaryError] = useState('');
   const [salarySaving, setSalarySaving] = useState(false);
@@ -185,12 +204,27 @@ export default function HR() {
     }
   };
 
+  const getSalarySlipForm = (employeeId: string) => salarySlipForms[employeeId] || defaultSalarySlipForm;
+
+  const updateSalarySlipForm = (employeeId: string, data: Partial<SalarySlipForm>) => {
+    setSalarySlipForms((current) => ({
+      ...current,
+      [employeeId]: {
+        ...defaultSalarySlipForm,
+        ...(current[employeeId] || {}),
+        ...data
+      }
+    }));
+  };
+
   const buildSalarySlip = (employee: UserProfile): Omit<SalarySlip, 'id'> => {
+    const slipForm = getSalarySlipForm(employee.uid);
     const basicSalary = Number(employee.salary || 0);
-    const slipHra = Number(hra || 0);
-    const slipConveyance = Number(conveyance || 0);
-    const slipIncentives = Number(incentives || 0);
-    const slipDeductions = Number(deductions || 0);
+    const slipHra = Number(slipForm.hra || 0);
+    const slipConveyance = Number(slipForm.conveyance || 0);
+    const slipIncentives = Number(slipForm.incentives || 0);
+    const slipDeductions = Number(slipForm.deductions || 0);
+    const grossSalary = basicSalary + slipHra + slipConveyance + slipIncentives;
 
     return {
       employeeId: employee.uid,
@@ -198,17 +232,22 @@ export default function HR() {
       employeeRole: employee.role,
       department: employee.department || 'General',
       month: salaryMonth,
+      slipNo: `AXS/${salaryMonth}/${employee.employeeId || employee.uid.slice(0, 6)}`,
       basicSalary,
       hra: slipHra,
       conveyance: slipConveyance,
       incentives: slipIncentives,
       deductions: slipDeductions,
-      deductionReason: deductionReason.trim(),
-      netSalary: basicSalary + slipHra + slipConveyance + slipIncentives - slipDeductions,
+      deductionReason: slipForm.deductionReason.trim(),
+      grossSalary,
+      netSalary: grossSalary - slipDeductions,
       bankAccount: employee.bankAccount || '',
       taxId: employee.taxId || '',
+      workingDays: Number(slipForm.workingDays || 30),
+      paidDays: Number(slipForm.paidDays || 30),
       status: 'Pending Approval',
       generatedBy: profile?.name || profile?.uid || 'HR',
+      signatureName: slipForm.signatureName || 'Authorized Signatory',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -240,6 +279,11 @@ export default function HR() {
     } finally {
       setSalarySaving(false);
     }
+  };
+
+  const downloadSalarySlipPdf = (slip: SalarySlip) => {
+    setPrintSalarySlip(slip);
+    window.setTimeout(() => window.print(), 50);
   };
 
   const updateSalarySlipStatus = async (slip: SalarySlip, status: 'Approved' | 'Rejected') => {
@@ -394,39 +438,67 @@ export default function HR() {
               </div>
               <p className="mt-1 text-sm text-slate-600">Generate employee salary slips month-wise, save them in Firebase, and send them to Head Manager for approval.</p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:w-[460px]">
+            <div className="lg:w-60">
               <div>
                 <p className="text-sm text-slate-500">Salary Month</p>
                 <Input type="month" value={salaryMonth} onChange={(e) => setSalaryMonth(e.target.value)} />
               </div>
-              <div>
-                <p className="text-sm text-slate-500">HRA</p>
-                <Input type="number" value={hra} onChange={(e) => setHra(Number(e.target.value))} />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">Conveyance</p>
-                <Input type="number" value={conveyance} onChange={(e) => setConveyance(Number(e.target.value))} />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">Incentives</p>
-                <Input type="number" value={incentives} onChange={(e) => setIncentives(Number(e.target.value))} />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">Deductions</p>
-                <Input type="number" value={deductions} onChange={(e) => setDeductions(Number(e.target.value))} />
-              </div>
-              <div className="sm:col-span-2">
-                <p className="text-sm text-slate-500">Deduction Reason</p>
-                <Textarea
-                  value={deductionReason}
-                  onChange={(e) => setDeductionReason(e.target.value)}
-                  placeholder="Absent, late attendance, not working, advance recovery, unpaid leave, other reason..."
-                />
-              </div>
-              <Button type="button" onClick={createSalarySlipsForAll} disabled={salarySaving || hrEmployees.length === 0}>
-                <Send size={16} /> Generate All
-              </Button>
             </div>
+          </div>
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-gold-200 bg-white">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-gold-100 text-slate-700">
+                <tr>
+                  <th className="p-3">Employee</th>
+                  <th className="p-3">HRA</th>
+                  <th className="p-3">Conveyance</th>
+                  <th className="p-3">Incentive</th>
+                  <th className="p-3">Deduction</th>
+                  <th className="p-3">Reason</th>
+                  <th className="p-3">Days</th>
+                  <th className="p-3">Signature</th>
+                  <th className="p-3">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hrEmployees.map((employee) => {
+                  const slipForm = getSalarySlipForm(employee.uid);
+                  return (
+                    <tr key={employee.uid} className="border-t align-top">
+                      <td className="p-3">
+                        <b className="text-sm">{employee.name}</b>
+                        <p className="text-slate-500">{employee.role}</p>
+                        <p className="font-semibold">{formatCurrency(employee.salary || 0)}</p>
+                      </td>
+                      <td className="p-3"><Input className="w-24" type="number" value={slipForm.hra} onChange={(e) => updateSalarySlipForm(employee.uid, { hra: Number(e.target.value) })} /></td>
+                      <td className="p-3"><Input className="w-24" type="number" value={slipForm.conveyance} onChange={(e) => updateSalarySlipForm(employee.uid, { conveyance: Number(e.target.value) })} /></td>
+                      <td className="p-3"><Input className="w-24" type="number" value={slipForm.incentives} onChange={(e) => updateSalarySlipForm(employee.uid, { incentives: Number(e.target.value) })} /></td>
+                      <td className="p-3"><Input className="w-24" type="number" value={slipForm.deductions} onChange={(e) => updateSalarySlipForm(employee.uid, { deductions: Number(e.target.value) })} /></td>
+                      <td className="p-3">
+                        <Textarea
+                          className="min-h-[72px] w-52"
+                          value={slipForm.deductionReason}
+                          onChange={(e) => updateSalarySlipForm(employee.uid, { deductionReason: e.target.value })}
+                          placeholder="Absent, not working, late, unpaid leave..."
+                        />
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-2">
+                          <Input className="w-20" type="number" value={slipForm.workingDays} onChange={(e) => updateSalarySlipForm(employee.uid, { workingDays: Number(e.target.value) })} />
+                          <Input className="w-20" type="number" value={slipForm.paidDays} onChange={(e) => updateSalarySlipForm(employee.uid, { paidDays: Number(e.target.value) })} />
+                        </div>
+                      </td>
+                      <td className="p-3"><Input className="w-40" value={slipForm.signatureName} onChange={(e) => updateSalarySlipForm(employee.uid, { signatureName: e.target.value })} /></td>
+                      <td className="p-3">
+                        <Button type="button" className="px-3 py-2 text-xs" onClick={() => createSalarySlipForEmployee(employee)} disabled={salarySaving}>
+                          <Send size={14} /> Generate
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
           {salaryMessage && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">{salaryMessage}</p>}
           {salaryError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{salaryError}</p>}
@@ -607,6 +679,7 @@ export default function HR() {
                   <th className="p-3">Employee</th>
                   <th className="p-3">Month</th>
                   <th className="p-3">Net Salary</th>
+                  <th className="p-3">Deduction</th>
                   <th className="p-3">Deduction Reason</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">Generated By</th>
@@ -615,7 +688,7 @@ export default function HR() {
               </thead>
               <tbody>
                 {monthlySalarySlips.length === 0 && (
-                  <tr><td className="p-6 text-center text-slate-500" colSpan={7}>No salary slips generated for this month.</td></tr>
+                  <tr><td className="p-6 text-center text-slate-500" colSpan={8}>No salary slips generated for this month.</td></tr>
                 )}
                 {monthlySalarySlips.map((slip) => (
                   <tr key={slip.id} className="border-t">
@@ -625,6 +698,7 @@ export default function HR() {
                     </td>
                     <td className="p-3">{slip.month}</td>
                     <td className="p-3">{formatCurrency(slip.netSalary || 0)}</td>
+                    <td className="p-3">{formatCurrency(slip.deductions || 0)}</td>
                     <td className="p-3">
                       <p className="max-w-xs text-xs text-slate-600">{slip.deductionReason || (slip.deductions ? 'No reason mentioned' : 'No deduction')}</p>
                     </td>
@@ -639,9 +713,13 @@ export default function HR() {
                         <div className="flex flex-wrap gap-2">
                           <Button className="px-3 py-2 text-xs" onClick={() => updateSalarySlipStatus(slip, 'Approved')}>Approve</Button>
                           <Button className="px-3 py-2 text-xs" variant="outline" onClick={() => updateSalarySlipStatus(slip, 'Rejected')}>Reject</Button>
+                          <Button className="px-3 py-2 text-xs" variant="outline" onClick={() => downloadSalarySlipPdf(slip)}><Download size={14} /> PDF</Button>
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-500">{slip.approvedBy ? `By ${slip.approvedBy}` : 'Waiting'}</span>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="text-xs text-slate-500">{slip.approvedBy ? `By ${slip.approvedBy}` : 'Waiting'}</span>
+                          <Button className="px-3 py-2 text-xs" variant="outline" onClick={() => downloadSalarySlipPdf(slip)}><Download size={14} /> PDF</Button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -706,6 +784,93 @@ export default function HR() {
           )}
         </div>
       </Card>
+      {printSalarySlip && (
+        <div className="print-only">
+          <SalarySlipPrint slip={printSalarySlip} />
+        </div>
+      )}
     </AppShell>
+  );
+}
+
+function SalarySlipPrint({ slip }: { slip: SalarySlip }) {
+  const grossSalary = slip.grossSalary ?? (slip.basicSalary + slip.hra + slip.conveyance + slip.incentives);
+  const issuedOn = new Date().toLocaleDateString('en-IN');
+
+  return (
+    <article className="salary-slip-page">
+      <header className="salary-slip-header">
+        <div className="flex items-center gap-4">
+          <div className="salary-slip-logo">
+            <img src="/axienta-logo.png" alt="Axienta Business Consulting logo" />
+          </div>
+          <div>
+            <h1>Axienta Business Consulting</h1>
+            <p>249, Bijli Office Road, Belisarai, Motihari, Bihar 845401</p>
+            <p>Phone: 8873773398 | Email: info@axientabuisnessconsulting.com</p>
+          </div>
+        </div>
+        <div className="salary-slip-title">Salary Slip</div>
+      </header>
+
+      <section className="salary-slip-meta">
+        <div><span>Slip No.</span><b>{slip.slipNo || `AXS/${slip.month}/${slip.employeeId.slice(0, 6)}`}</b></div>
+        <div><span>Salary Month</span><b>{slip.month}</b></div>
+        <div><span>Issue Date</span><b>{issuedOn}</b></div>
+        <div><span>Status</span><b>{slip.status}</b></div>
+      </section>
+
+      <section className="salary-slip-employee">
+        <div><span>Employee Name</span><b>{slip.employeeName}</b></div>
+        <div><span>Designation</span><b>{slip.employeeRole}</b></div>
+        <div><span>Department</span><b>{slip.department}</b></div>
+        <div><span>Employee ID</span><b>{slip.employeeId}</b></div>
+        <div><span>Working Days</span><b>{slip.workingDays || 30}</b></div>
+        <div><span>Paid Days</span><b>{slip.paidDays || 30}</b></div>
+        <div><span>Bank Account</span><b>{slip.bankAccount || 'Not assigned'}</b></div>
+        <div><span>PAN / Tax ID</span><b>{slip.taxId || 'Not assigned'}</b></div>
+      </section>
+
+      <section className="salary-slip-grid">
+        <table>
+          <thead><tr><th>Earnings</th><th>Amount</th></tr></thead>
+          <tbody>
+            <tr><td>Basic Salary</td><td>{formatCurrency(slip.basicSalary)}</td></tr>
+            <tr><td>HRA</td><td>{formatCurrency(slip.hra)}</td></tr>
+            <tr><td>Conveyance</td><td>{formatCurrency(slip.conveyance)}</td></tr>
+            <tr><td>Incentives / Bonus</td><td>{formatCurrency(slip.incentives)}</td></tr>
+            <tr className="total"><td>Gross Salary</td><td>{formatCurrency(grossSalary)}</td></tr>
+          </tbody>
+        </table>
+
+        <table>
+          <thead><tr><th>Deductions</th><th>Amount</th></tr></thead>
+          <tbody>
+            <tr><td>Deductions</td><td>{formatCurrency(slip.deductions)}</td></tr>
+            <tr><td>Reason</td><td>{slip.deductionReason || 'No deduction'}</td></tr>
+            <tr className="total"><td>Total Deduction</td><td>{formatCurrency(slip.deductions)}</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section className="salary-slip-net">
+        <span>Net Payable Salary</span>
+        <b>{formatCurrency(slip.netSalary)}</b>
+      </section>
+
+      <footer className="salary-slip-footer">
+        <div>
+          <p className="font-semibold">Prepared By</p>
+          <p>{slip.generatedBy || 'HR Department'}</p>
+        </div>
+        <div className="salary-slip-signature">
+          <div />
+          <p>{slip.signatureName || 'Authorized Signatory'}</p>
+          <span>Signature</span>
+        </div>
+      </footer>
+
+      <p className="salary-slip-note">This is a system generated salary slip and should be verified by HR/Head Manager before final salary release.</p>
+    </article>
   );
 }
