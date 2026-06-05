@@ -4,7 +4,8 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function role() { 
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(userPath) ? get(userPath).data.role : 'User';
+      let employeePath = /databases/$(database)/documents/employees/$(request.auth.uid);
+      return exists(userPath) ? get(userPath).data.role : exists(employeePath) ? get(employeePath).data.role : 'User';
     }
     function isAdmin() { return signedIn() && role() in ['CEO','Admin','Head Manager']; }
     function isManager() { return signedIn() && role() in ['CEO','Admin','Head Manager','Team Manager']; }
@@ -31,13 +32,13 @@ service cloud.firestore {
     }
     match /reports/{id} { allow read, write: if signedIn() && role() in ['CEO','Admin','Head Manager','Team Manager','HR']; }
     match /companyLetters/{id} {
-      allow read, write: if signedIn() && role() in ['CEO','Head Manager','HR'];
+      allow read, write: if signedIn() && role() in ['CEO','Admin','Head Manager','HR'];
     }
     match /salarySlips/{id} {
-      allow read: if signedIn() && (role() in ['CEO','Head Manager','HR'] || resource.data.employeeId == request.auth.uid);
-      allow create: if signedIn() && role() in ['CEO','HR'];
-      allow update: if signedIn() && role() in ['CEO','Head Manager','HR'];
-      allow delete: if signedIn() && role() in ['CEO','HR'];
+      allow read: if signedIn() && (role() in ['CEO','Admin','Head Manager','HR'] || resource.data.employeeId == request.auth.uid);
+      allow create: if signedIn() && role() in ['CEO','Admin','HR'];
+      allow update: if signedIn() && role() in ['CEO','Admin','Head Manager','HR'];
+      allow delete: if signedIn() && role() in ['CEO','Admin','HR'];
     }
     match /notifications/{id} { allow read, update: if signedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == 'all'); allow create: if signedIn(); allow delete: if isManager(); }
     match /call_logs/{id} { 
