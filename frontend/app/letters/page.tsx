@@ -59,6 +59,8 @@ export default function Letters() {
   const [form, setForm] = useState<Omit<CompanyLetter, 'id'>>(() => newLetter());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     const q = query(collection(db, 'companyLetters'), orderBy('updatedAt', 'desc'));
@@ -68,7 +70,10 @@ export default function Letters() {
         setLetters(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })) as CompanyLetter[]);
         setLoading(false);
       },
-      () => setLoading(false)
+      (error) => {
+        setSaveError(`Unable to load saved documents: ${error.message}`);
+        setLoading(false);
+      }
     );
   }, []);
 
@@ -76,12 +81,16 @@ export default function Letters() {
 
   const createBlank = () => {
     setSelectedId(null);
+    setSaveStatus('');
+    setSaveError('');
     setForm(newLetter(profile?.name));
   };
 
   const selectLetter = (letter: CompanyLetter) => {
     const { id, ...data } = letter;
     setSelectedId(id);
+    setSaveStatus('');
+    setSaveError('');
     setForm(data);
   };
 
@@ -98,6 +107,8 @@ export default function Letters() {
 
   const saveLetter = async () => {
     setSaving(true);
+    setSaveStatus('');
+    setSaveError('');
     const payload = {
       ...form,
       createdBy: form.createdBy || profile?.name || 'System',
@@ -114,6 +125,9 @@ export default function Letters() {
         });
         setSelectedId(created.id);
       }
+      setSaveStatus('Document saved successfully.');
+    } catch (error: any) {
+      setSaveError(error?.message || 'Document could not be saved. Please check Firebase permissions.');
     } finally {
       setSaving(false);
     }
@@ -121,8 +135,15 @@ export default function Letters() {
 
   const deleteLetter = async () => {
     if (!selectedId) return;
-    await deleteDoc(doc(db, 'companyLetters', selectedId));
-    createBlank();
+    setSaveStatus('');
+    setSaveError('');
+    try {
+      await deleteDoc(doc(db, 'companyLetters', selectedId));
+      createBlank();
+      setSaveStatus('Document deleted successfully.');
+    } catch (error: any) {
+      setSaveError(error?.message || 'Document could not be deleted.');
+    }
   };
 
   return (
@@ -199,6 +220,8 @@ export default function Letters() {
               <Button type="button" variant="outline" onClick={() => window.print()}><Printer size={16} />Export PDF</Button>
               <Button type="button" variant="danger" onClick={deleteLetter} disabled={!selectedId}><Trash2 size={16} />Delete</Button>
             </div>
+            {saveStatus ? <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">{saveStatus}</p> : null}
+            {saveError ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{saveError}</p> : null}
           </Card>
 
           <Card>

@@ -6,29 +6,45 @@ html { scroll-behavior:smooth; } body { @apply bg-slate-50 text-slate-900 dark:b
 ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-navy-700 rounded-full; }
 
 .print-only { display: none; }
-.letter-page { width: min(100%, 794px); min-height: 1123px; padding: 44px 54px; position: relative; overflow: hidden; border: 1px solid #e2e8f0; }
+.letter-page { box-sizing: border-box; width: min(100%, 794px); min-height: 1123px; padding: 38px 48px; position: relative; overflow: hidden; border: 1px solid #e2e8f0; }
 .letter-page::before { content: ""; position: absolute; inset: 0; border-top: 12px solid #0b3973; pointer-events: none; }
 .letter-page::after { content: ""; position: absolute; right: -95px; top: -95px; width: 230px; height: 230px; border: 30px solid rgba(246,126,20,.16); border-radius: 50%; pointer-events: none; }
-.letter-header { border-bottom: 3px solid #f47c14; padding-bottom: 18px; position: relative; z-index: 1; }
+.letter-header { border-bottom: 3px solid #f47c14; padding-bottom: 14px; position: relative; z-index: 1; }
 .letter-logo { width: 86px; height: 64px; display: flex; align-items: center; justify-content: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 26px rgba(15,23,42,.12); overflow: hidden; }
 .letter-logo img { width: 78px; height: 56px; object-fit: contain; display: block; }
 .letter-header h2 { color: #0b3973; font-size: 27px; line-height: 1.08; font-weight: 900; letter-spacing: .01em; }
 .letter-header p { color: #475569; font-size: 12px; }
 .letter-meta { text-align: right; font-size: 12px; color: #334155; line-height: 1.7; }
 .letter-doc-label { display: inline-block; border-radius: 999px; background: #fff3e8; color: #0b3973; border: 1px solid #fed7aa; padding: 3px 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
-.letter-contact { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 16px; padding: 9px 12px; border-radius: 14px; background: #f8fafc; color: #334155; font-size: 11px; border: 1px solid #e2e8f0; }
+.letter-contact { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; padding: 8px 10px; border-radius: 12px; background: #f8fafc; color: #334155; font-size: 10.5px; border: 1px solid #e2e8f0; }
 .letter-contact span { display: inline-flex; align-items: center; gap: 5px; }
-.letter-body { padding: 34px 0 120px; position: relative; z-index: 1; }
-.letter-topline { display: flex; justify-content: space-between; gap: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 18px; margin-bottom: 22px; }
-.letter-subject { display: flex; align-items: center; gap: 8px; color: #0b3973; font-weight: 800; margin-bottom: 24px; }
-.letter-content { color: #1e293b; font-size: 14px; line-height: 1.85; white-space: pre-wrap; }
-.letter-footer { position: absolute; left: 54px; right: 54px; bottom: 42px; display: flex; justify-content: space-between; align-items: flex-end; color: #334155; font-size: 12px; border-top: 2px solid #0b3973; padding-top: 18px; }
-.signature-line { width: 190px; border-top: 1px solid #64748b; margin: 42px 0 8px; }
+.letter-body { padding: 26px 0 96px; position: relative; z-index: 1; }
+.letter-topline { display: flex; justify-content: space-between; gap: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 18px; }
+.letter-subject { display: flex; align-items: center; gap: 8px; color: #0b3973; font-weight: 800; margin-bottom: 18px; }
+.letter-content { color: #1e293b; font-size: 12.5px; line-height: 1.62; white-space: pre-wrap; }
+.letter-footer { position: absolute; left: 48px; right: 48px; bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; color: #334155; font-size: 11px; border-top: 2px solid #0b3973; padding-top: 12px; }
+.signature-line { width: 170px; border-top: 1px solid #64748b; margin: 30px 0 6px; }
 
 @media print {
   @page { size: A4; margin: 0; }
-  html, body { background: white !important; }
+  html, body { width: 210mm; height: 297mm; margin: 0 !important; overflow: hidden !important; background: white !important; }
+  body * { visibility: hidden !important; }
+  .print-only, .print-only * { visibility: visible !important; }
   .screen-only, aside, nav, button { display: none !important; }
-  .print-only { display: block !important; }
-  .letter-page { width: 210mm; min-height: 297mm; margin: 0; border: 0 !important; box-shadow: none !important; page-break-after: always; }
+  .print-only { display: block !important; position: fixed !important; inset: 0 !important; width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; background: white !important; }
+  .letter-page { box-sizing: border-box; width: 210mm !important; height: 297mm !important; min-height: 297mm !important; margin: 0 !important; padding: 10mm 12mm 8mm !important; border: 0 !important; box-shadow: none !important; page-break-after: avoid; }
+  .letter-page::before { border-top-width: 3mm; }
+  .letter-page::after { width: 42mm; height: 42mm; right: -18mm; top: -18mm; border-width: 6mm; }
+  .letter-header { padding-bottom: 3mm; }
+  .letter-logo { width: 22mm; height: 16mm; border-radius: 3mm; box-shadow: none; }
+  .letter-logo img { width: 20mm; height: 14mm; }
+  .letter-header h2 { font-size: 18pt; }
+  .letter-meta, .letter-header p, .letter-footer { font-size: 8pt; }
+  .letter-contact { margin-top: 3mm; padding: 2mm 2.5mm; gap: 2mm 4mm; font-size: 7pt; border-radius: 3mm; }
+  .letter-body { padding: 6mm 0 23mm; }
+  .letter-topline { padding-bottom: 3mm; margin-bottom: 4mm; }
+  .letter-subject { margin-bottom: 4mm; font-size: 9pt; }
+  .letter-content { font-size: 9pt; line-height: 1.52; }
+  .letter-footer { left: 12mm; right: 12mm; bottom: 7mm; padding-top: 3mm; }
+  .signature-line { width: 42mm; margin: 8mm 0 1.5mm; }
 }
