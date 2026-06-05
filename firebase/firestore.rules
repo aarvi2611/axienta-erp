@@ -33,6 +33,12 @@ service cloud.firestore {
     match /companyLetters/{id} {
       allow read, write: if signedIn() && role() in ['CEO','Head Manager','HR'];
     }
+    match /salarySlips/{id} {
+      allow read: if signedIn() && (role() in ['CEO','Head Manager','HR'] || resource.data.employeeId == request.auth.uid);
+      allow create: if signedIn() && role() in ['CEO','HR'];
+      allow update: if signedIn() && role() in ['CEO','Head Manager','HR'];
+      allow delete: if signedIn() && role() in ['CEO','HR'];
+    }
     match /notifications/{id} { allow read, update: if signedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == 'all'); allow create: if signedIn(); allow delete: if isManager(); }
     match /call_logs/{id} { 
       allow read, create, update: if signedIn(); 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { addDoc, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { AppShell } from '@/components/layout/app-shell';
 import { PageHeader } from '@/components/dashboard/dashboard-components';
 import { Card } from '@/components/ui/card';
@@ -9,14 +10,18 @@ import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
 import { useAttendance, useEmployees } from '@/hooks/useFirestoreData';
 import { useAuth } from '@/contexts/providers';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { API_URL } from '@/lib/api';
 import { authenticatedFetch } from '@/lib/auth-fetch';
-import { UserProfile } from '@/types';
-import { FileSignature } from 'lucide-react';
+import { SalarySlip, UserProfile } from '@/types';
+import { FileSignature, Send, Wallet } from 'lucide-react';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
+}
+
+function currentSalaryMonth() {
+  return new Date().toISOString().slice(0, 7);
 }
 
 export default function HR() {
@@ -41,6 +46,15 @@ export default function HR() {
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveFrom, setLeaveFrom] = useState(new Date().toISOString().split('T')[0]);
   const [leaveTo, setLeaveTo] = useState(new Date().toISOString().split('T')[0]);
+  const [salarySlips, setSalarySlips] = useState<SalarySlip[]>([]);
+  const [salaryMonth, setSalaryMonth] = useState(currentSalaryMonth());
+  const [hra, setHra] = useState(0);
+  const [conveyance, setConveyance] = useState(0);
+  const [incentives, setIncentives] = useState(0);
+  const [deductions, setDeductions] = useState(0);
+  const [salaryMessage, setSalaryMessage] = useState('');
+  const [salaryError, setSalaryError] = useState('');
+  const [salarySaving, setSalarySaving] = useState(false);
   const { profile } = useAuth();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -67,6 +81,15 @@ export default function HR() {
   useEffect(() => {
     if (auth.currentUser) fetchLeaveRequests();
   }, [profile?.uid]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'salarySlips'), orderBy('createdAt', 'desc'));
+    return onSnapshot(
+      q,
+      (snapshot) => setSalarySlips(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })) as SalarySlip[]),
+      (error) => setSalaryError(error.message || 'Failed to load salary slips')
+    );
+  }, []);
 
   const leaveRequestsForHR = useMemo(() => {
     return leaveRequests || [];
@@ -161,6 +184,78 @@ export default function HR() {
     }
   };
 
+  const buildSalarySlip = (employee: UserProfile): Omit<SalarySlip, 'id'> => {
+    const basicSalary = Number(employee.salary || 0);
+    const slipHra = Number(hra || 0);
+    const slipConveyance = Number(conveyance || 0);
+    const slipIncentives = Number(incentives || 0);
+    const slipDeductions = Number(deductions || 0);
+
+    return {
+      employeeId: employee.uid,
+      employeeName: employee.name,
+      employeeRole: employee.role,
+      department: employee.department || 'General',
+      month: salaryMonth,
+      basicSalary,
+      hra: slipHra,
+      conveyance: slipConveyance,
+      incentives: slipIncentives,
+      deductions: slipDeductions,
+      netSalary: basicSalary + slipHra + slipConveyance + slipIncentives - slipDeductions,
+      bankAccount: employee.bankAccount || '',
+      taxId: employee.taxId || '',
+      status: 'Pending Approval',
+      generatedBy: profile?.name || profile?.uid || 'HR',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+  };
+
+  const createSalarySlipForEmployee = async (employee: UserProfile) => {
+    setSalaryMessage('');
+    setSalaryError('');
+    setSalarySaving(true);
+    try {
+      await addDoc(collection(db, 'salarySlips'), buildSalarySlip(employee));
+      setSalaryMessage(`Salary slip for ${employee.name} sent to Head Manager for approval.`);
+    } catch (error: any) {
+      setSalaryError(error?.message || 'Failed to generate salary slip.');
+    } finally {
+      setSalarySaving(false);
+    }
+  };
+
+  const createSalarySlipsForAll = async () => {
+    setSalaryMessage('');
+    setSalaryError('');
+    setSalarySaving(true);
+    try {
+      await Promise.all(hrEmployees.map((employee) => addDoc(collection(db, 'salarySlips'), buildSalarySlip(employee))));
+      setSalaryMessage(`${hrEmployees.length} salary slips for ${salaryMonth} sent to Head Manager for approval.`);
+    } catch (error: any) {
+      setSalaryError(error?.message || 'Failed to generate salary slips.');
+    } finally {
+      setSalarySaving(false);
+    }
+  };
+
+  const updateSalarySlipStatus = async (slip: SalarySlip, status: 'Approved' | 'Rejected') => {
+    setSalaryMessage('');
+    setSalaryError('');
+    try {
+      await updateDoc(doc(db, 'salarySlips', slip.id), {
+        status,
+        approvedBy: profile?.name || profile?.uid || 'Head Manager',
+        approvedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      setSalaryMessage(`${slip.employeeName}'s salary slip ${status.toLowerCase()}.`);
+    } catch (error: any) {
+      setSalaryError(error?.message || 'Failed to update salary slip approval.');
+    }
+  };
+
   const hrEmployees = useMemo(() => {
     return employees.map((employee) => ({
       ...employee,
@@ -178,6 +273,9 @@ export default function HR() {
   const avgSalary = employees.length ? totalPayroll / employees.length : 0;
   const lowLeaveCount = hrEmployees.filter((employee) => (employee.leaveBalance ?? 0) <= 5).length;
   const payrollCount = hrEmployees.filter((employee) => employee.salary && employee.salary > 0).length;
+  const monthlySalarySlips = salarySlips.filter((slip) => slip.month === salaryMonth);
+  const pendingSalarySlips = monthlySalarySlips.filter((slip) => slip.status === 'Pending Approval');
+  const canApproveSalarySlips = profile?.role === 'Head Manager' || profile?.role === 'CEO';
 
   return (
     <AppShell>
@@ -285,6 +383,59 @@ export default function HR() {
       </div>
 
       <Card className="mt-6">
+        <div className="mb-6 rounded-2xl border border-gold-200 bg-gold-50/70 p-4">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+            <div>
+              <div className="flex items-center gap-2">
+                <Wallet className="text-gold-600" size={20} />
+                <h3 className="font-bold text-lg">Monthly Salary Slip Generator</h3>
+              </div>
+              <p className="mt-1 text-sm text-slate-600">Generate employee salary slips month-wise, save them in Firebase, and send them to Head Manager for approval.</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:w-[460px]">
+              <div>
+                <p className="text-sm text-slate-500">Salary Month</p>
+                <Input type="month" value={salaryMonth} onChange={(e) => setSalaryMonth(e.target.value)} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">HRA</p>
+                <Input type="number" value={hra} onChange={(e) => setHra(Number(e.target.value))} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Conveyance</p>
+                <Input type="number" value={conveyance} onChange={(e) => setConveyance(Number(e.target.value))} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Incentives</p>
+                <Input type="number" value={incentives} onChange={(e) => setIncentives(Number(e.target.value))} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Deductions</p>
+                <Input type="number" value={deductions} onChange={(e) => setDeductions(Number(e.target.value))} />
+              </div>
+              <Button type="button" onClick={createSalarySlipsForAll} disabled={salarySaving || hrEmployees.length === 0}>
+                <Send size={16} /> Generate All
+              </Button>
+            </div>
+          </div>
+          {salaryMessage && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">{salaryMessage}</p>}
+          {salaryError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{salaryError}</p>}
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl bg-white p-4">
+              <p className="text-sm text-slate-500">Generated This Month</p>
+              <b className="text-2xl">{monthlySalarySlips.length}</b>
+            </div>
+            <div className="rounded-2xl bg-white p-4">
+              <p className="text-sm text-slate-500">Pending Approval</p>
+              <b className="text-2xl">{pendingSalarySlips.length}</b>
+            </div>
+            <div className="rounded-2xl bg-white p-4">
+              <p className="text-sm text-slate-500">Approved</p>
+              <b className="text-2xl">{monthlySalarySlips.filter((slip) => slip.status === 'Approved').length}</b>
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-bold text-lg">Salary & HR Details</h3>
@@ -384,6 +535,15 @@ export default function HR() {
                   />
                 </div>
                 <Button onClick={saveEmployeeDetails}>Save Payroll Details</Button>
+                {selectedEmployee && (
+                  <Button
+                    variant="outline"
+                    onClick={() => createSalarySlipForEmployee({ ...selectedEmployee, ...detailForm })}
+                    disabled={salarySaving}
+                  >
+                    <Send size={16} /> Generate Salary Slip
+                  </Button>
+                )}
               </Card>
 
               <Card className="p-4">
@@ -427,6 +587,55 @@ export default function HR() {
             </Card>
           </div>
         )}
+
+        <div className="mt-6">
+          <h3 className="font-bold text-lg">Salary Slip Approval Queue</h3>
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-100 text-slate-600">
+                <tr>
+                  <th className="p-3">Employee</th>
+                  <th className="p-3">Month</th>
+                  <th className="p-3">Net Salary</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Generated By</th>
+                  <th className="p-3">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlySalarySlips.length === 0 && (
+                  <tr><td className="p-6 text-center text-slate-500" colSpan={6}>No salary slips generated for this month.</td></tr>
+                )}
+                {monthlySalarySlips.map((slip) => (
+                  <tr key={slip.id} className="border-t">
+                    <td className="p-3">
+                      <b>{slip.employeeName}</b>
+                      <p className="text-xs text-slate-500">{slip.employeeRole} | {slip.department}</p>
+                    </td>
+                    <td className="p-3">{slip.month}</td>
+                    <td className="p-3">{formatCurrency(slip.netSalary || 0)}</td>
+                    <td className="p-3">
+                      <span className={`rounded-full px-2 py-1 text-xs font-bold ${slip.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : slip.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {slip.status}
+                      </span>
+                    </td>
+                    <td className="p-3">{slip.generatedBy || 'HR'}</td>
+                    <td className="p-3">
+                      {canApproveSalarySlips && slip.status === 'Pending Approval' ? (
+                        <div className="flex flex-wrap gap-2">
+                          <Button className="px-3 py-2 text-xs" onClick={() => updateSalarySlipStatus(slip, 'Approved')}>Approve</Button>
+                          <Button className="px-3 py-2 text-xs" variant="outline" onClick={() => updateSalarySlipStatus(slip, 'Rejected')}>Reject</Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-500">{slip.approvedBy ? `By ${slip.approvedBy}` : 'Waiting'}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         <div className="mt-6">
           <h3 className="font-bold text-lg">Leave Requests</h3>
