@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
-import { Building2, CalendarDays, FileSignature, FileText, Mail, MapPin, Phone, Plus, Printer, Save, Trash2 } from 'lucide-react';
+import { CalendarDays, FileSignature, FileText, Mail, MapPin, Phone, Plus, Printer, Save, Trash2 } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { PageHeader } from '@/components/dashboard/dashboard-components';
 import { Card } from '@/components/ui/card';
@@ -215,7 +215,7 @@ export default function Letters() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-navy-900">{letter.title}</p>
-                      <p className="text-xs text-slate-500">{letter.referenceNo} • {letter.type}</p>
+                      <p className="text-xs text-slate-500">{letter.referenceNo} | {letter.type}</p>
                     </div>
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">{letter.status}</span>
                   </div>
@@ -244,22 +244,24 @@ function LetterPreview({ form, typeLabel }: { form: Omit<CompanyLetter, 'id'>; t
       <header className="letter-header">
         <div className="flex items-start justify-between gap-8">
           <div className="flex items-center gap-4">
-            <div className="letter-logo"><Building2 size={36} /></div>
+            <div className="letter-logo">
+              <img src="/axienta-logo.png" alt="Axienta Business Consulting logo" />
+            </div>
             <div>
               <h2>Axienta Business Consulting</h2>
-              <p>Business Consulting & ERP Services</p>
+              <p>Business Consulting, Finance Advisory & ERP Services</p>
             </div>
           </div>
           <div className="letter-meta">
-            <p className="font-semibold">{typeLabel}</p>
+            <p className="letter-doc-label">{typeLabel}</p>
             <p>Ref: {form.referenceNo || 'AXN/----'}</p>
             <p>Date: {new Date().toLocaleDateString('en-IN')}</p>
           </div>
         </div>
         <div className="letter-contact">
-          <span><Phone size={14} /> +91-1234567890</span>
-          <span><Mail size={14} /> info@axenta.com</span>
-          <span><MapPin size={14} /> Business Tower, Mumbai, Maharashtra, India</span>
+          <span><Phone size={14} /> 8873773398</span>
+          <span><Mail size={14} /> info@axientabuisnessconsulting.com</span>
+          <span><MapPin size={14} /> 249, Bijli Office Road, Belisarai, Motihari, Bihar 845401</span>
         </div>
       </header>
 
@@ -293,6 +295,7 @@ function LetterPreview({ form, typeLabel }: { form: Omit<CompanyLetter, 'id'>; t
         <div className="text-right">
           <CalendarDays size={16} className="ml-auto mb-1 text-gold-600" />
           <p>Generated on {formatDocDate(form.updatedAt)}</p>
+          <p className="mt-1 text-[11px] text-slate-500">info@axientabuisnessconsulting.com</p>
         </div>
       </footer>
     </article>
