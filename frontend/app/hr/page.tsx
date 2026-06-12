@@ -91,6 +91,8 @@ export default function HR() {
 
   const today = new Date().toISOString().slice(0, 10);
   const presentToday = attendance.filter((a: any) => a.date === today && a.status === 'Present').length;
+  const isHeadManagerRole = profile?.role === 'Head Manager';
+  const canManageCeoSignature = !isHeadManagerRole;
 
   const fetchLeaveRequests = async () => {
     if (!auth.currentUser) return;
@@ -287,13 +289,24 @@ export default function HR() {
     };
   };
 
+  const applySignaturePermissions = (payload: Omit<SalarySlip, 'id'>, existingSlip?: SalarySlip): Omit<SalarySlip, 'id'> => {
+    if (canManageCeoSignature) return payload;
+
+    return {
+      ...payload,
+      ceoSignatureName: existingSlip?.ceoSignatureName || '',
+      ceoSignatureType: existingSlip?.ceoSignatureType || 'Manual',
+      ceoSignatureImage: existingSlip?.ceoSignatureImage || ''
+    };
+  };
+
   const createSalarySlipForEmployee = async (employee: UserProfile) => {
     setSalaryMessage('');
     setSalaryError('');
     setSalarySaving(true);
     try {
       const existingSlip = salarySlips.find((slip) => slip.employeeId === employee.uid && slip.month === salaryMonth);
-      const payload = buildSalarySlip(employee);
+      const payload = applySignaturePermissions(buildSalarySlip(employee), existingSlip);
 
       if (existingSlip) {
         await updateDoc(doc(db, 'salarySlips', existingSlip.id), {
@@ -323,7 +336,7 @@ export default function HR() {
 
       for (const employee of hrEmployees) {
         const existingSlip = salarySlips.find((slip) => slip.employeeId === employee.uid && slip.month === salaryMonth);
-        const payload = buildSalarySlip(employee);
+        const payload = applySignaturePermissions(buildSalarySlip(employee), existingSlip);
 
         if (existingSlip) {
           await updateDoc(doc(db, 'salarySlips', existingSlip.id), {
@@ -539,7 +552,7 @@ export default function HR() {
                   <th className="p-3">Reason</th>
                   <th className="p-3">Days</th>
                   <th className="p-3">Head Manager Signature</th>
-                  <th className="p-3">CEO Signature</th>
+                  {canManageCeoSignature && <th className="p-3">CEO Signature</th>}
                   <th className="p-3">Action</th>
                 </tr>
               </thead>
@@ -615,44 +628,46 @@ export default function HR() {
                           )}
                         </div>
                       </td>
-                      <td className="p-3">
-                        <div className="space-y-2">
-                          <Input className="w-40" value={slipForm.ceoSignatureName} onChange={(e) => updateSalarySlipForm(employee.uid, { ceoSignatureName: e.target.value })} />
-                          <select
-                            className="w-40 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold"
-                            value={slipForm.ceoSignatureType}
-                            onChange={(e) => updateSalarySlipForm(employee.uid, { ceoSignatureType: e.target.value as 'Digital' | 'Manual' })}
-                          >
-                            <option value="Digital">Digital</option>
-                            <option value="Manual">Manual</option>
-                          </select>
-                          {slipForm.ceoSignatureType === 'Digital' && (
-                            <div className="w-40 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
-                              {slipForm.ceoSignatureImage ? (
-                                <img className="h-12 w-full rounded-lg bg-white object-contain" src={slipForm.ceoSignatureImage} alt="CEO signature preview" />
-                              ) : (
-                                <p className="text-[11px] text-slate-500">Upload signature image</p>
-                              )}
-                              <Input
-                                className="w-full text-[11px]"
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => uploadSignatureImage(employee.uid, 'ceoSignatureImage', e.target.files?.[0])}
-                              />
-                              {slipForm.ceoSignatureImage && (
-                                <Button
-                                  type="button"
-                                  className="w-full px-2 py-1 text-[11px]"
-                                  variant="outline"
-                                  onClick={() => updateSalarySlipForm(employee.uid, { ceoSignatureImage: '' })}
-                                >
-                                  Remove Image
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </td>
+                      {canManageCeoSignature && (
+                        <td className="p-3">
+                          <div className="space-y-2">
+                            <Input className="w-40" value={slipForm.ceoSignatureName} onChange={(e) => updateSalarySlipForm(employee.uid, { ceoSignatureName: e.target.value })} />
+                            <select
+                              className="w-40 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold"
+                              value={slipForm.ceoSignatureType}
+                              onChange={(e) => updateSalarySlipForm(employee.uid, { ceoSignatureType: e.target.value as 'Digital' | 'Manual' })}
+                            >
+                              <option value="Digital">Digital</option>
+                              <option value="Manual">Manual</option>
+                            </select>
+                            {slipForm.ceoSignatureType === 'Digital' && (
+                              <div className="w-40 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                                {slipForm.ceoSignatureImage ? (
+                                  <img className="h-12 w-full rounded-lg bg-white object-contain" src={slipForm.ceoSignatureImage} alt="CEO signature preview" />
+                                ) : (
+                                  <p className="text-[11px] text-slate-500">Upload signature image</p>
+                                )}
+                                <Input
+                                  className="w-full text-[11px]"
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => uploadSignatureImage(employee.uid, 'ceoSignatureImage', e.target.files?.[0])}
+                                />
+                                {slipForm.ceoSignatureImage && (
+                                  <Button
+                                    type="button"
+                                    className="w-full px-2 py-1 text-[11px]"
+                                    variant="outline"
+                                    onClick={() => updateSalarySlipForm(employee.uid, { ceoSignatureImage: '' })}
+                                  >
+                                    Remove Image
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      )}
                       <td className="p-3">
                         <div className="flex flex-col gap-2">
                           <Button type="button" className="px-3 py-2 text-xs" onClick={() => createSalarySlipForEmployee(employee)} disabled={salarySaving}>
