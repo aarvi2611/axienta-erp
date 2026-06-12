@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { addDoc, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { AppShell } from '@/components/layout/app-shell';
 import { PageHeader } from '@/components/dashboard/dashboard-components';
 import { Card } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { auth, db } from '@/lib/firebase';
 import { API_URL } from '@/lib/api';
 import { authenticatedFetch } from '@/lib/auth-fetch';
 import { SalarySlip, UserProfile } from '@/types';
-import { Download, FileSignature, Send, Wallet } from 'lucide-react';
+import { Download, FileSignature, Send, Trash2, Wallet } from 'lucide-react';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
@@ -33,6 +33,10 @@ type SalarySlipForm = {
   workingDays: number;
   paidDays: number;
   signatureName: string;
+  headManagerSignatureName: string;
+  headManagerSignatureType: 'Digital' | 'Manual';
+  ceoSignatureName: string;
+  ceoSignatureType: 'Digital' | 'Manual';
 };
 
 const defaultSalarySlipForm: SalarySlipForm = {
@@ -43,7 +47,11 @@ const defaultSalarySlipForm: SalarySlipForm = {
   deductionReason: '',
   workingDays: 30,
   paidDays: 30,
-  signatureName: 'Authorized Signatory'
+  signatureName: 'Authorized Signatory',
+  headManagerSignatureName: 'Head Manager',
+  headManagerSignatureType: 'Digital',
+  ceoSignatureName: 'CEO',
+  ceoSignatureType: 'Digital'
 };
 
 export default function HR() {
@@ -248,6 +256,10 @@ export default function HR() {
       status: 'Pending Approval',
       generatedBy: profile?.name || profile?.uid || 'HR',
       signatureName: slipForm.signatureName || 'Authorized Signatory',
+      headManagerSignatureName: slipForm.headManagerSignatureName || slipForm.signatureName || 'Head Manager',
+      headManagerSignatureType: slipForm.headManagerSignatureType || 'Digital',
+      ceoSignatureName: slipForm.ceoSignatureName || 'CEO',
+      ceoSignatureType: slipForm.ceoSignatureType || 'Digital',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -258,8 +270,20 @@ export default function HR() {
     setSalaryError('');
     setSalarySaving(true);
     try {
-      await addDoc(collection(db, 'salarySlips'), buildSalarySlip(employee));
-      setSalaryMessage(`Salary slip for ${employee.name} sent to Head Manager for approval.`);
+      const existingSlip = salarySlips.find((slip) => slip.employeeId === employee.uid && slip.month === salaryMonth);
+      const payload = buildSalarySlip(employee);
+
+      if (existingSlip) {
+        await updateDoc(doc(db, 'salarySlips', existingSlip.id), {
+          ...payload,
+          createdAt: existingSlip.createdAt,
+          updatedAt: serverTimestamp()
+        });
+        setSalaryMessage(`Salary slip for ${employee.name} updated and sent to Head Manager for approval.`);
+      } else {
+        await addDoc(collection(db, 'salarySlips'), payload);
+        setSalaryMessage(`Salary slip for ${employee.name} sent to Head Manager for approval.`);
+      }
     } catch (error: any) {
       setSalaryError(error?.message || 'Failed to generate salary slip.');
     } finally {
@@ -267,15 +291,34 @@ export default function HR() {
     }
   };
 
-  const createSalarySlipsForAll = async () => {
+  const createMonthlySalarySlips = async () => {
     setSalaryMessage('');
     setSalaryError('');
     setSalarySaving(true);
     try {
-      await Promise.all(hrEmployees.map((employee) => addDoc(collection(db, 'salarySlips'), buildSalarySlip(employee))));
-      setSalaryMessage(`${hrEmployees.length} salary slips for ${salaryMonth} sent to Head Manager for approval.`);
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      for (const employee of hrEmployees) {
+        const existingSlip = salarySlips.find((slip) => slip.employeeId === employee.uid && slip.month === salaryMonth);
+        const payload = buildSalarySlip(employee);
+
+        if (existingSlip) {
+          await updateDoc(doc(db, 'salarySlips', existingSlip.id), {
+            ...payload,
+            createdAt: existingSlip.createdAt,
+            updatedAt: serverTimestamp()
+          });
+          updatedCount += 1;
+        } else {
+          await addDoc(collection(db, 'salarySlips'), payload);
+          createdCount += 1;
+        }
+      }
+
+      setSalaryMessage(`Monthly salary slips generated for ${salaryMonth}. Created: ${createdCount}, Updated: ${updatedCount}.`);
     } catch (error: any) {
-      setSalaryError(error?.message || 'Failed to generate salary slips.');
+      setSalaryError(error?.message || 'Failed to generate monthly salary slips.');
     } finally {
       setSalarySaving(false);
     }
@@ -299,6 +342,20 @@ export default function HR() {
       setSalaryMessage(`${slip.employeeName}'s salary slip ${status.toLowerCase()}.`);
     } catch (error: any) {
       setSalaryError(error?.message || 'Failed to update salary slip approval.');
+    }
+  };
+
+  const deleteSalarySlip = async (slip: SalarySlip) => {
+    const confirmed = window.confirm(`Delete salary slip for ${slip.employeeName} (${slip.month})?`);
+    if (!confirmed) return;
+
+    setSalaryMessage('');
+    setSalaryError('');
+    try {
+      await deleteDoc(doc(db, 'salarySlips', slip.id));
+      setSalaryMessage(`Salary slip for ${slip.employeeName} deleted.`);
+    } catch (error: any) {
+      setSalaryError(error?.message || 'Failed to delete salary slip.');
     }
   };
 
@@ -438,11 +495,14 @@ export default function HR() {
               </div>
               <p className="mt-1 text-sm text-slate-600">Generate employee salary slips month-wise, save them in Firebase, and send them to Head Manager for approval.</p>
             </div>
-            <div className="lg:w-60">
+            <div className="flex flex-col gap-2 lg:w-60">
               <div>
                 <p className="text-sm text-slate-500">Salary Month</p>
                 <Input type="month" value={salaryMonth} onChange={(e) => setSalaryMonth(e.target.value)} />
               </div>
+              <Button type="button" onClick={createMonthlySalarySlips} disabled={salarySaving || hrEmployees.length === 0}>
+                <Send size={14} /> Generate Monthly Slips
+              </Button>
             </div>
           </div>
           <div className="mt-4 overflow-x-auto rounded-2xl border border-gold-200 bg-white">
@@ -456,7 +516,8 @@ export default function HR() {
                   <th className="p-3">Deduction</th>
                   <th className="p-3">Reason</th>
                   <th className="p-3">Days</th>
-                  <th className="p-3">Signature</th>
+                  <th className="p-3">Head Manager Signature</th>
+                  <th className="p-3">CEO Signature</th>
                   <th className="p-3">Action</th>
                 </tr>
               </thead>
@@ -488,7 +549,32 @@ export default function HR() {
                           <Input className="w-20" type="number" value={slipForm.paidDays} onChange={(e) => updateSalarySlipForm(employee.uid, { paidDays: Number(e.target.value) })} />
                         </div>
                       </td>
-                      <td className="p-3"><Input className="w-40" value={slipForm.signatureName} onChange={(e) => updateSalarySlipForm(employee.uid, { signatureName: e.target.value })} /></td>
+                      <td className="p-3">
+                        <div className="space-y-2">
+                          <Input className="w-40" value={slipForm.headManagerSignatureName} onChange={(e) => updateSalarySlipForm(employee.uid, { headManagerSignatureName: e.target.value, signatureName: e.target.value })} />
+                          <select
+                            className="w-40 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold"
+                            value={slipForm.headManagerSignatureType}
+                            onChange={(e) => updateSalarySlipForm(employee.uid, { headManagerSignatureType: e.target.value as 'Digital' | 'Manual' })}
+                          >
+                            <option value="Digital">Digital</option>
+                            <option value="Manual">Manual</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-2">
+                          <Input className="w-40" value={slipForm.ceoSignatureName} onChange={(e) => updateSalarySlipForm(employee.uid, { ceoSignatureName: e.target.value })} />
+                          <select
+                            className="w-40 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold"
+                            value={slipForm.ceoSignatureType}
+                            onChange={(e) => updateSalarySlipForm(employee.uid, { ceoSignatureType: e.target.value as 'Digital' | 'Manual' })}
+                          >
+                            <option value="Digital">Digital</option>
+                            <option value="Manual">Manual</option>
+                          </select>
+                        </div>
+                      </td>
                       <td className="p-3">
                         <Button type="button" className="px-3 py-2 text-xs" onClick={() => createSalarySlipForEmployee(employee)} disabled={salarySaving}>
                           <Send size={14} /> Generate
@@ -714,11 +800,13 @@ export default function HR() {
                           <Button className="px-3 py-2 text-xs" onClick={() => updateSalarySlipStatus(slip, 'Approved')}>Approve</Button>
                           <Button className="px-3 py-2 text-xs" variant="outline" onClick={() => updateSalarySlipStatus(slip, 'Rejected')}>Reject</Button>
                           <Button className="px-3 py-2 text-xs" variant="outline" onClick={() => downloadSalarySlipPdf(slip)}><Download size={14} /> PDF</Button>
+                          <Button className="px-3 py-2 text-xs border-red-200 text-red-600 hover:bg-red-50" variant="outline" onClick={() => deleteSalarySlip(slip)}><Trash2 size={14} /> Delete</Button>
                         </div>
                       ) : (
                         <div className="flex flex-wrap gap-2">
                           <span className="text-xs text-slate-500">{slip.approvedBy ? `By ${slip.approvedBy}` : 'Waiting'}</span>
                           <Button className="px-3 py-2 text-xs" variant="outline" onClick={() => downloadSalarySlipPdf(slip)}><Download size={14} /> PDF</Button>
+                          <Button className="px-3 py-2 text-xs border-red-200 text-red-600 hover:bg-red-50" variant="outline" onClick={() => deleteSalarySlip(slip)}><Trash2 size={14} /> Delete</Button>
                         </div>
                       )}
                     </td>
@@ -796,9 +884,14 @@ export default function HR() {
 function SalarySlipPrint({ slip }: { slip: SalarySlip }) {
   const grossSalary = slip.grossSalary ?? (slip.basicSalary + slip.hra + slip.conveyance + slip.incentives);
   const issuedOn = new Date().toLocaleDateString('en-IN');
+  const headManagerSignatureName = slip.headManagerSignatureName || slip.signatureName || 'Head Manager';
+  const headManagerSignatureType = slip.headManagerSignatureType || 'Digital';
+  const ceoSignatureName = slip.ceoSignatureName || 'CEO';
+  const ceoSignatureType = slip.ceoSignatureType || 'Digital';
 
   return (
     <article className="salary-slip-page">
+      <div className="salary-slip-watermark">AXIENTA</div>
       <header className="salary-slip-header">
         <div className="flex items-center gap-4">
           <div className="salary-slip-logo">
@@ -810,9 +903,13 @@ function SalarySlipPrint({ slip }: { slip: SalarySlip }) {
             <p>Phone: 8873773398 | Email: info@axientabuisnessconsulting.com</p>
           </div>
         </div>
-        <div className="salary-slip-title">Salary Slip</div>
+        <div className="salary-slip-title">
+          <span>Salary Slip</span>
+          <b>{slip.status}</b>
+        </div>
       </header>
 
+      <div className="salary-slip-section-title">Payroll Summary</div>
       <section className="salary-slip-meta">
         <div><span>Slip No.</span><b>{slip.slipNo || `AXS/${slip.month}/${slip.employeeId.slice(0, 6)}`}</b></div>
         <div><span>Salary Month</span><b>{slip.month}</b></div>
@@ -820,6 +917,7 @@ function SalarySlipPrint({ slip }: { slip: SalarySlip }) {
         <div><span>Status</span><b>{slip.status}</b></div>
       </section>
 
+      <div className="salary-slip-section-title">Employee & Attendance Details</div>
       <section className="salary-slip-employee">
         <div><span>Employee Name</span><b>{slip.employeeName}</b></div>
         <div><span>Designation</span><b>{slip.employeeRole}</b></div>
@@ -831,6 +929,7 @@ function SalarySlipPrint({ slip }: { slip: SalarySlip }) {
         <div><span>PAN / Tax ID</span><b>{slip.taxId || 'Not assigned'}</b></div>
       </section>
 
+      <div className="salary-slip-section-title">Earnings & Deductions</div>
       <section className="salary-slip-grid">
         <table>
           <thead><tr><th>Earnings</th><th>Amount</th></tr></thead>
@@ -854,8 +953,15 @@ function SalarySlipPrint({ slip }: { slip: SalarySlip }) {
       </section>
 
       <section className="salary-slip-net">
-        <span>Net Payable Salary</span>
+        <div>
+          <span>Net Payable Salary</span>
+          <p>Amount payable after all earnings and deductions</p>
+        </div>
         <b>{formatCurrency(slip.netSalary)}</b>
+      </section>
+
+      <section className="salary-slip-remarks">
+        <b>Deduction Remarks:</b> {slip.deductionReason || 'No deductions applied for this salary period.'}
       </section>
 
       <footer className="salary-slip-footer">
@@ -864,13 +970,20 @@ function SalarySlipPrint({ slip }: { slip: SalarySlip }) {
           <p>{slip.generatedBy || 'HR Department'}</p>
         </div>
         <div className="salary-slip-signature">
+          <strong>{headManagerSignatureType === 'Digital' ? headManagerSignatureName : ' '}</strong>
           <div />
-          <p>{slip.signatureName || 'Authorized Signatory'}</p>
-          <span>Signature</span>
+          <p>{headManagerSignatureName}</p>
+          <span>Head Manager {headManagerSignatureType} Signature</span>
+        </div>
+        <div className="salary-slip-signature">
+          <strong>{ceoSignatureType === 'Digital' ? ceoSignatureName : ' '}</strong>
+          <div />
+          <p>{ceoSignatureName}</p>
+          <span>CEO {ceoSignatureType} Signature</span>
         </div>
       </footer>
 
-      <p className="salary-slip-note">This is a system generated salary slip and should be verified by HR/Head Manager before final salary release.</p>
+      <p className="salary-slip-note">This salary slip is confidential and system generated for payroll records. Please contact HR for any correction request.</p>
     </article>
   );
 }
