@@ -524,12 +524,18 @@ export default function HR() {
               <tbody>
                 {hrEmployees.map((employee) => {
                   const slipForm = getSalarySlipForm(employee.uid);
+                  const existingSalarySlip = monthlySalarySlips.find((slip) => slip.employeeId === employee.uid);
                   return (
                     <tr key={employee.uid} className="border-t align-top">
                       <td className="p-3">
                         <b className="text-sm">{employee.name}</b>
                         <p className="text-slate-500">{employee.role}</p>
                         <p className="font-semibold">{formatCurrency(employee.salary || 0)}</p>
+                        {existingSalarySlip && (
+                          <span className="mt-2 inline-flex rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">
+                            Slip Generated
+                          </span>
+                        )}
                       </td>
                       <td className="p-3"><Input className="w-24" type="number" value={slipForm.hra} onChange={(e) => updateSalarySlipForm(employee.uid, { hra: Number(e.target.value) })} /></td>
                       <td className="p-3"><Input className="w-24" type="number" value={slipForm.conveyance} onChange={(e) => updateSalarySlipForm(employee.uid, { conveyance: Number(e.target.value) })} /></td>
@@ -576,9 +582,21 @@ export default function HR() {
                         </div>
                       </td>
                       <td className="p-3">
-                        <Button type="button" className="px-3 py-2 text-xs" onClick={() => createSalarySlipForEmployee(employee)} disabled={salarySaving}>
-                          <Send size={14} /> Generate
-                        </Button>
+                        <div className="flex flex-col gap-2">
+                          <Button type="button" className="px-3 py-2 text-xs" onClick={() => createSalarySlipForEmployee(employee)} disabled={salarySaving}>
+                            <Send size={14} /> {existingSalarySlip ? 'Update' : 'Generate'}
+                          </Button>
+                          {existingSalarySlip && (
+                            <Button
+                              type="button"
+                              className="px-3 py-2 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                              variant="outline"
+                              onClick={() => deleteSalarySlip(existingSalarySlip)}
+                            >
+                              <Trash2 size={14} /> Remove Slip
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
