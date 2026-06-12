@@ -35,8 +35,10 @@ type SalarySlipForm = {
   signatureName: string;
   headManagerSignatureName: string;
   headManagerSignatureType: 'Digital' | 'Manual';
+  headManagerSignatureImage: string;
   ceoSignatureName: string;
   ceoSignatureType: 'Digital' | 'Manual';
+  ceoSignatureImage: string;
 };
 
 const defaultSalarySlipForm: SalarySlipForm = {
@@ -50,8 +52,10 @@ const defaultSalarySlipForm: SalarySlipForm = {
   signatureName: 'Authorized Signatory',
   headManagerSignatureName: 'Head Manager',
   headManagerSignatureType: 'Digital',
+  headManagerSignatureImage: '',
   ceoSignatureName: 'CEO',
-  ceoSignatureType: 'Digital'
+  ceoSignatureType: 'Digital',
+  ceoSignatureImage: ''
 };
 
 export default function HR() {
@@ -225,6 +229,22 @@ export default function HR() {
     }));
   };
 
+  const uploadSignatureImage = (employeeId: string, field: 'headManagerSignatureImage' | 'ceoSignatureImage', file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setSalaryError('Please upload a valid signature image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateSalarySlipForm(employeeId, { [field]: String(reader.result || '') } as Partial<SalarySlipForm>);
+      setSalaryError('');
+    };
+    reader.onerror = () => setSalaryError('Failed to read signature image.');
+    reader.readAsDataURL(file);
+  };
+
   const buildSalarySlip = (employee: UserProfile): Omit<SalarySlip, 'id'> => {
     const slipForm = getSalarySlipForm(employee.uid);
     const basicSalary = Number(employee.salary || 0);
@@ -258,8 +278,10 @@ export default function HR() {
       signatureName: slipForm.signatureName || 'Authorized Signatory',
       headManagerSignatureName: slipForm.headManagerSignatureName || slipForm.signatureName || 'Head Manager',
       headManagerSignatureType: slipForm.headManagerSignatureType || 'Digital',
+      headManagerSignatureImage: slipForm.headManagerSignatureImage || '',
       ceoSignatureName: slipForm.ceoSignatureName || 'CEO',
       ceoSignatureType: slipForm.ceoSignatureType || 'Digital',
+      ceoSignatureImage: slipForm.ceoSignatureImage || '',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -566,6 +588,31 @@ export default function HR() {
                             <option value="Digital">Digital</option>
                             <option value="Manual">Manual</option>
                           </select>
+                          {slipForm.headManagerSignatureType === 'Digital' && (
+                            <div className="w-40 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                              {slipForm.headManagerSignatureImage ? (
+                                <img className="h-12 w-full rounded-lg bg-white object-contain" src={slipForm.headManagerSignatureImage} alt="Head Manager signature preview" />
+                              ) : (
+                                <p className="text-[11px] text-slate-500">Upload signature image</p>
+                              )}
+                              <Input
+                                className="w-full text-[11px]"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => uploadSignatureImage(employee.uid, 'headManagerSignatureImage', e.target.files?.[0])}
+                              />
+                              {slipForm.headManagerSignatureImage && (
+                                <Button
+                                  type="button"
+                                  className="w-full px-2 py-1 text-[11px]"
+                                  variant="outline"
+                                  onClick={() => updateSalarySlipForm(employee.uid, { headManagerSignatureImage: '' })}
+                                >
+                                  Remove Image
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="p-3">
@@ -579,6 +626,31 @@ export default function HR() {
                             <option value="Digital">Digital</option>
                             <option value="Manual">Manual</option>
                           </select>
+                          {slipForm.ceoSignatureType === 'Digital' && (
+                            <div className="w-40 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                              {slipForm.ceoSignatureImage ? (
+                                <img className="h-12 w-full rounded-lg bg-white object-contain" src={slipForm.ceoSignatureImage} alt="CEO signature preview" />
+                              ) : (
+                                <p className="text-[11px] text-slate-500">Upload signature image</p>
+                              )}
+                              <Input
+                                className="w-full text-[11px]"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => uploadSignatureImage(employee.uid, 'ceoSignatureImage', e.target.files?.[0])}
+                              />
+                              {slipForm.ceoSignatureImage && (
+                                <Button
+                                  type="button"
+                                  className="w-full px-2 py-1 text-[11px]"
+                                  variant="outline"
+                                  onClick={() => updateSalarySlipForm(employee.uid, { ceoSignatureImage: '' })}
+                                >
+                                  Remove Image
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="p-3">
@@ -818,12 +890,16 @@ export default function HR() {
                           <div className="rounded-xl bg-slate-50 px-3 py-2">
                             <p className="font-bold text-slate-700">Head Manager</p>
                             <p className="text-slate-600">{headManagerSignatureName}</p>
-                            <span className="mt-1 inline-flex rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">{headManagerSignatureType}</span>
+                            <span className="mt-1 inline-flex rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
+                              {headManagerSignatureType}{slip.headManagerSignatureImage ? ' Image' : ''}
+                            </span>
                           </div>
                           <div className="rounded-xl bg-slate-50 px-3 py-2">
                             <p className="font-bold text-slate-700">CEO</p>
                             <p className="text-slate-600">{ceoSignatureName}</p>
-                            <span className="mt-1 inline-flex rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">{ceoSignatureType}</span>
+                            <span className="mt-1 inline-flex rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
+                              {ceoSignatureType}{slip.ceoSignatureImage ? ' Image' : ''}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -926,8 +1002,10 @@ function SalarySlipPrint({ slip }: { slip: SalarySlip }) {
   const issuedOn = new Date().toLocaleDateString('en-IN');
   const headManagerSignatureName = slip.headManagerSignatureName || slip.signatureName || 'Head Manager';
   const headManagerSignatureType = slip.headManagerSignatureType || 'Digital';
+  const headManagerSignatureImage = slip.headManagerSignatureImage || '';
   const ceoSignatureName = slip.ceoSignatureName || 'CEO';
   const ceoSignatureType = slip.ceoSignatureType || 'Digital';
+  const ceoSignatureImage = slip.ceoSignatureImage || '';
 
   return (
     <article className="salary-slip-page">
@@ -1010,13 +1088,21 @@ function SalarySlipPrint({ slip }: { slip: SalarySlip }) {
           <p>{slip.generatedBy || 'HR Department'}</p>
         </div>
         <div className="salary-slip-signature">
-          <strong>{headManagerSignatureType === 'Digital' ? headManagerSignatureName : ' '}</strong>
+          {headManagerSignatureType === 'Digital' && headManagerSignatureImage ? (
+            <img src={headManagerSignatureImage} alt="Head Manager digital signature" />
+          ) : (
+            <strong>{headManagerSignatureType === 'Digital' ? headManagerSignatureName : ' '}</strong>
+          )}
           <div />
           <p>{headManagerSignatureName}</p>
           <span>Head Manager {headManagerSignatureType} Signature</span>
         </div>
         <div className="salary-slip-signature">
-          <strong>{ceoSignatureType === 'Digital' ? ceoSignatureName : ' '}</strong>
+          {ceoSignatureType === 'Digital' && ceoSignatureImage ? (
+            <img src={ceoSignatureImage} alt="CEO digital signature" />
+          ) : (
+            <strong>{ceoSignatureType === 'Digital' ? ceoSignatureName : ' '}</strong>
+          )}
           <div />
           <p>{ceoSignatureName}</p>
           <span>CEO {ceoSignatureType} Signature</span>
