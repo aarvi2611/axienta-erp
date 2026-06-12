@@ -96,10 +96,21 @@ export function AnalyticsCharts({ leads = [] }: { leads?: Lead[] }) {
   );
 }
 
-export function LeadTable({ items = [], onChangeStage }: { items?: Lead[]; onChangeStage?: (id: string, newStage: string) => Promise<void> }) {
+export function LeadTable({
+  items = [],
+  onChangeStage,
+  onEdit,
+  onDelete
+}: {
+  items?: Lead[];
+  onChangeStage?: (id: string, newStage: string) => Promise<void>;
+  onEdit?: (lead: Lead) => void;
+  onDelete?: (lead: Lead) => void;
+}) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedStage, setSelectedStage] = useState('');
   const stages = ['New Lead', 'Contacted', 'Follow-Up', 'Interested', 'Confirmed', 'Converted', 'Rejected'];
+  const showActions = Boolean(onEdit || onDelete);
 
   const handleStageChange = async (id: string, newStage: string) => {
     if (onChangeStage) {
@@ -121,12 +132,13 @@ export function LeadTable({ items = [], onChangeStage }: { items?: Lead[]; onCha
               <th>Category</th>
               <th>Rating</th>
               <th>Owner</th>
+              {showActions && <th className="p-3">Action</th>}
             </tr>
           </thead>
           <tbody>
             {items.length === 0 && (
               <tr>
-                <td className="p-6 text-center text-slate-500" colSpan={6}>
+                <td className="p-6 text-center text-slate-500" colSpan={showActions ? 7 : 6}>
                   No records found. Add data in Firestore or through the form.
                 </td>
               </tr>
@@ -166,6 +178,30 @@ export function LeadTable({ items = [], onChangeStage }: { items?: Lead[]; onCha
                 <td>{l.category || '—'}</td>
                 <td>{l.rating ? `⭐ ${l.rating}` : '—'}</td>
                 <td>{l.ownerId || '—'}</td>
+                {showActions && (
+                  <td className="p-3">
+                    <div className="flex flex-wrap gap-2">
+                      {onEdit && (
+                        <button
+                          type="button"
+                          className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold transition hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/10"
+                          onClick={() => onEdit(l)}
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          type="button"
+                          className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                          onClick={() => onDelete(l)}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
