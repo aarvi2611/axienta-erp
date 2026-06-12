@@ -240,14 +240,28 @@ export async function checkOut(userId: string) {
   });
 }
 
-export async function createCallLog(data: { leadId: string; status: string; notes: string }, userId?: string) {
+export async function createCallLog(data: { leadId: string; status: string; notes: string; remarks?: string }, userId?: string) {
   return addDoc(collection(db, 'call_logs'), {
     leadId: data.leadId,
     status: data.status,
     notes: data.notes,
+    remarks: data.remarks || '',
     userId,
-    createdAt: serverTimestamp()
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   });
+}
+
+export async function updateCallLog(id: string, data: { leadId: string; status: string; notes: string; remarks?: string }) {
+  return updateDoc(doc(db, 'call_logs', id), {
+    ...data,
+    remarks: data.remarks || '',
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function removeCallLog(id: string) {
+  return deleteDoc(doc(db, 'call_logs', id));
 }
 
 export function useOperations() {
