@@ -21,6 +21,28 @@ import { useAuth } from '@/contexts/providers';
 
 type Status = 'loading' | 'success' | 'error';
 
+function taskStatusToOperation(status?: Task['status']) {
+  switch (status) {
+    case 'Accepted':
+      return { status: 'In Progress', progress: 10 };
+    case 'In Progress':
+      return { status: 'In Progress', progress: 40 };
+    case 'Submitted for Review':
+      return { status: 'In Progress', progress: 75 };
+    case 'Revision Requested':
+      return { status: 'In Progress', progress: 55 };
+    case 'Approved':
+      return { status: 'In Progress', progress: 90 };
+    case 'Closed':
+    case 'Completed':
+      return { status: 'Completed', progress: 100 };
+    case 'Rejected':
+      return { status: 'Cancelled', progress: 0 };
+    default:
+      return { status: 'Pending', progress: 0 };
+  }
+}
+
 export function useCollection<T>(
   collectionName: string,
   constraints: QueryConstraint[] = []
@@ -165,7 +187,7 @@ export async function removeLead(id: string) {
 }
 
 export async function createTask(data: Partial<Task>, createdBy?: string) {
-  const ref = await addDoc(collection(db, 'tasks'), {
+  const taskPayload = {
     title: data.title || 'Untitled Task',
     description: data.description || '',
     assignedTo: data.assignedTo || '',
@@ -180,7 +202,9 @@ export async function createTask(data: Partial<Task>, createdBy?: string) {
     stageNote: '',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
-  });
+  };
+
+  const ref = await addDoc(collection(db, 'tasks'), taskPayload);
 
   if (data.assignedTo) {
     await addDoc(collection(db, 'notifications'), {
@@ -193,21 +217,77 @@ export async function createTask(data: Partial<Task>, createdBy?: string) {
     });
   }
 
+  await addDoc(collection(db, 'operations'), {
+    clientName: data.title || 'Untitled Task',
+    leadId: '',
+    taskId: ref.id,
+    source: 'Task Assignment',
+    serviceType: 'Assigned Work',
+    description: data.description || '',
+    status: 'Pending',
+    progress: 0,
+    priority: data.priority || 'Medium',
+    assignedTo: data.assignedTo || '',
+    assignedName: data.assignedName || '',
+    deadline: data.deadline || '',
+    startDate: new Date().toISOString().split('T')[0],
+    budget: 0,
+    spent: 0,
+    expenses: 0,
+    notes: '',
+    details: data.description || '',
+    attachments: data.attachments || [],
+    createdBy: createdBy || '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+
   return ref;
 }
 
 export async function updateTaskStatus(id: string, status: Task['status']) {
-  return updateDoc(doc(db, 'tasks', id), {
+  await updateDoc(doc(db, 'tasks', id), {
     status,
     updatedAt: serverTimestamp()
   });
+  await syncTaskOperation(id, { status });
 }
 
 export async function updateTask(id: string, data: Partial<Task>) {
-  return updateDoc(doc(db, 'tasks', id), {
+  await updateDoc(doc(db, 'tasks', id), {
     ...data,
     updatedAt: serverTimestamp()
   });
+  await syncTaskOperation(id, data);
+}
+
+async function syncTaskOperation(taskId: string, data: Partial<Task>) {
+  const q = query(collection(db, 'operations'), where('taskId', '==', taskId));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return;
+
+  const taskStage = taskStatusToOperation(data.status);
+  const operationUpdates: Record<string, any> = {
+    updatedAt: serverTimestamp()
+  };
+
+  if (data.status) {
+    operationUpdates.status = taskStage.status;
+    operationUpdates.progress = taskStage.progress;
+  }
+  if (data.title) operationUpdates.clientName = data.title;
+  if (data.description) {
+    operationUpdates.description = data.description;
+    operationUpdates.details = data.description;
+  }
+  if (data.assignedTo !== undefined) operationUpdates.assignedTo = data.assignedTo || '';
+  if (data.assignedName !== undefined) operationUpdates.assignedName = data.assignedName || '';
+  if (data.deadline !== undefined) operationUpdates.deadline = data.deadline || '';
+  if (data.priority) operationUpdates.priority = data.priority;
+  if (data.completionNote !== undefined) operationUpdates.notes = data.completionNote || '';
+  if (data.managerFeedback !== undefined) operationUpdates.managerFeedback = data.managerFeedback || '';
+
+  await Promise.all(snapshot.docs.map((item) => updateDoc(doc(db, 'operations', item.id), operationUpdates)));
 }
 
 export async function checkIn(userId: string) {
@@ -272,6 +352,8 @@ export async function createOperation(data: any, createdBy?: string) {
   return addDoc(collection(db, 'operations'), {
     clientName: data.clientName || '',
     leadId: data.leadId || '',
+    taskId: data.taskId || '',
+    source: data.source || 'Manual',
     serviceType: data.serviceType || 'General',
     description: data.description || '',
     status: data.status || 'Pending',
@@ -283,6 +365,7 @@ export async function createOperation(data: any, createdBy?: string) {
     startDate: data.startDate || new Date().toISOString().split('T')[0],
     budget: Number(data.budget || 0),
     spent: Number(data.spent || 0),
+    expenses: Number(data.expenses || data.spent || 0),
     notes: data.notes || '',
     details: data.details || '',
     attachments: data.attachments || [],

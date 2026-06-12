@@ -5,9 +5,10 @@ import { PageHeader } from '@/components/dashboard/dashboard-components';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input, Select, Textarea } from '@/components/ui/input';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLeads, useEmployees, useOperations, createOperation, updateOperation, deleteOperation, addOperationNote } from '@/hooks/useFirestoreData';
 import { useAuth } from '@/contexts/providers';
+import { BriefcaseBusiness, Eye, IndianRupee, TrendingUp, X } from 'lucide-react';
 
 const serviceTypes = ['Consulting', 'Development', 'Design', 'Support', 'Training', 'Integration', 'General'];
 const statuses = ['Pending', 'In Progress', 'On Hold', 'Completed', 'Cancelled'];
@@ -38,8 +39,31 @@ export default function Operations() {
     startDate: new Date().toISOString().split('T')[0],
     budget: 0,
     spent: 0,
+    expenses: 0,
     details: ''
   });
+
+  const operationStats = useMemo(() => {
+    const totalBudget = operations.reduce((sum, op) => sum + Number(op.budget || 0), 0);
+    const totalExpenses = operations.reduce((sum, op) => sum + Number(op.expenses ?? op.spent ?? 0), 0);
+    const avgProgress = operations.length
+      ? Math.round(operations.reduce((sum, op) => sum + Number(op.progress || 0), 0) / operations.length)
+      : 0;
+
+    return {
+      active: operations.filter((op) => op.status !== 'Completed' && op.status !== 'Cancelled').length,
+      taskLinked: operations.filter((op) => op.taskId).length,
+      totalBudget,
+      totalExpenses,
+      avgProgress
+    };
+  }, [operations]);
+
+  useEffect(() => {
+    if (!selectedOp) return;
+    const liveOperation = operations.find((op) => op.id === selectedOp.id);
+    if (liveOperation) setSelectedOp(liveOperation);
+  }, [operations, selectedOp?.id]);
 
   const handleCreate = async () => {
     setSaving(true);
@@ -66,6 +90,7 @@ export default function Operations() {
         startDate: new Date().toISOString().split('T')[0],
         budget: 0,
         spent: 0,
+        expenses: 0,
         details: ''
       });
       setOpen(false);
@@ -79,7 +104,10 @@ export default function Operations() {
 
   const handleUpdateField = async (opId: string, field: string, value: any) => {
     try {
-      await updateOperation(opId, { [field]: value });
+      const updates: Record<string, any> = { [field]: value };
+      if (field === 'expenses') updates.spent = value;
+      if (field === 'spent') updates.expenses = value;
+      await updateOperation(opId, updates);
     } catch (e: any) {
       setMessage(e.message);
     }
@@ -144,11 +172,46 @@ export default function Operations() {
     <AppShell>
       <PageHeader
         title="Operations Panel"
-        subtitle="Manage client services, track progress, deadlines, and budgets"
+        subtitle="Track assigned work as operations, manage progress, budgets, expenses, deadlines and project notes."
         actions={<Button onClick={() => setOpen(!open)}>+ New Service</Button>}
       />
 
       {message && <p className="mb-4 rounded-xl bg-gold-50 p-3 text-sm font-semibold text-navy-900">{message}</p>}
+
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
+        <Card>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">Active Projects</p>
+            <BriefcaseBusiness className="text-gold-600" size={20} />
+          </div>
+          <b className="mt-2 block text-3xl">{operationStats.active}</b>
+          <p className="mt-2 text-sm text-slate-500">{operationStats.taskLinked} linked with assigned tasks</p>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">Avg. Progress</p>
+            <TrendingUp className="text-blue-600" size={20} />
+          </div>
+          <b className="mt-2 block text-3xl">{operationStats.avgProgress}%</b>
+          <p className="mt-2 text-sm text-slate-500">Across live operations</p>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">Budget</p>
+            <IndianRupee className="text-emerald-600" size={20} />
+          </div>
+          <b className="mt-2 block text-3xl">₹{operationStats.totalBudget.toLocaleString()}</b>
+          <p className="mt-2 text-sm text-slate-500">Manual budget planning</p>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">Expenses</p>
+            <IndianRupee className="text-red-600" size={20} />
+          </div>
+          <b className="mt-2 block text-3xl">₹{operationStats.totalExpenses.toLocaleString()}</b>
+          <p className="mt-2 text-sm text-slate-500">Manually updated spend</p>
+        </Card>
+      </div>
 
       {open && (
         <Card className="mb-6">
@@ -172,7 +235,7 @@ export default function Operations() {
               {employees.map(emp => <option key={emp.uid} value={emp.uid}>{emp.name}</option>)}
             </Select>
             <Input type="number" placeholder="Budget (₹)" value={form.budget} onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })} />
-            <Input type="number" placeholder="Spent (₹)" value={form.spent} onChange={(e) => setForm({ ...form, spent: Number(e.target.value) })} />
+            <Input type="number" placeholder="Expenses (₹)" value={form.expenses} onChange={(e) => setForm({ ...form, expenses: Number(e.target.value), spent: Number(e.target.value) })} />
             <Textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             <Textarea placeholder="Detailed Requirements/Specifications" value={form.details} onChange={(e) => setForm({ ...form, details: e.target.value })} />
             <Button disabled={saving || !form.clientName} onClick={handleCreate} className="md:col-span-3">
@@ -195,6 +258,9 @@ export default function Operations() {
                   <p className="text-xs text-slate-500 uppercase">Client</p>
                   <b className="text-lg">{op.clientName}</b>
                   <p className="text-sm text-slate-600">{op.serviceType}</p>
+                  <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-bold ${op.taskId ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
+                    {op.source || (op.taskId ? 'Task Assignment' : 'Manual')}
+                  </span>
                 </div>
                 
                 <div>
@@ -240,12 +306,22 @@ export default function Operations() {
 
                 <div>
                   <p className="text-xs text-slate-500 uppercase">Budget</p>
-                  <p className="text-sm">
-                    <b className="text-gold-600">₹{(op.budget || 0).toLocaleString()}</b>
-                    <span className="text-slate-500 ml-2">Spent: ₹{(op.spent || 0).toLocaleString()}</span>
-                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <Input
+                      type="number"
+                      value={op.budget || 0}
+                      onChange={(e) => handleUpdateField(op.id, 'budget', Number(e.target.value))}
+                      title="Manual budget"
+                    />
+                    <Input
+                      type="number"
+                      value={op.expenses ?? op.spent ?? 0}
+                      onChange={(e) => handleUpdateField(op.id, 'expenses', Number(e.target.value))}
+                      title="Manual expenses"
+                    />
+                  </div>
                   <p className="text-xs text-slate-600 mt-1">
-                    Remaining: ₹{((op.budget || 0) - (op.spent || 0)).toLocaleString()}
+                    Budget: ₹{(op.budget || 0).toLocaleString()} | Expenses: ₹{(op.expenses ?? op.spent ?? 0).toLocaleString()} | Remaining: ₹{((op.budget || 0) - (op.expenses ?? op.spent ?? 0)).toLocaleString()}
                   </p>
                 </div>
 
@@ -255,40 +331,10 @@ export default function Operations() {
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-xs text-slate-500 uppercase mb-2">Notes & Updates</p>
-                {selectedOp?.id === op.id ? (
-                  <div className="space-y-2 mb-4">
-                    {(op.notesList || []).map((note: any) => (
-                      <div key={note.id} className="bg-slate-50 p-2 rounded text-sm">
-                        <p className="font-semibold text-xs text-slate-600">{note.createdAt}</p>
-                        <p>{note.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
               <div className="mt-4 flex gap-2 flex-wrap">
-                {selectedOp?.id === op.id ? (
-                  <>
-                    <div className="w-full flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Add note..."
-                        value={newNote}
-                        onChange={(e) => setNewNote(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded border border-gray-300"
-                      />
-                      <Button onClick={handleAddNote} disabled={saving || !newNote.trim()}>
-                        {saving ? 'Adding...' : 'Add Note'}
-                      </Button>
-                    </div>
-                    <Button variant="outline" onClick={() => setSelectedOp(null)}>Collapse</Button>
-                  </>
-                ) : (
-                  <Button variant="outline" onClick={() => setSelectedOp(op)}>Expand & Add Note</Button>
-                )}
+                <Button variant="outline" onClick={() => setSelectedOp(op)}>
+                  <Eye size={16} /> View More
+                </Button>
                 
                 <Select 
                   value={op.status} 
@@ -306,6 +352,115 @@ export default function Operations() {
           ))
         )}
       </div>
+
+      {selectedOp && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-navy-900/70 p-3 backdrop-blur sm:p-6">
+          <div className="mx-auto max-w-5xl rounded-2xl bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white p-5">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-gold-600">Operation Details</p>
+                <h2 className="mt-1 text-2xl font-black text-navy-900">{selectedOp.clientName}</h2>
+                <p className="text-sm text-slate-500">{selectedOp.source || (selectedOp.taskId ? 'Task Assignment' : 'Manual Project')}</p>
+              </div>
+              <Button variant="ghost" className="px-3" onClick={() => setSelectedOp(null)} title="Close">
+                <X size={18} />
+              </Button>
+            </div>
+
+            <div className="grid gap-5 p-5 lg:grid-cols-[1fr_320px]">
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Project Brief</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">{selectedOp.description || selectedOp.details || 'No project details added.'}</p>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs uppercase tracking-widest text-slate-500">Assigned To</p>
+                    <b className="mt-2 block">{selectedOp.assignedName || 'Unassigned'}</b>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs uppercase tracking-widest text-slate-500">Deadline</p>
+                    <b className="mt-2 block">{selectedOp.deadline ? new Date(selectedOp.deadline).toLocaleDateString() : 'Not set'}</b>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs uppercase tracking-widest text-slate-500">Progress</p>
+                    <b className="mt-2 block">{selectedOp.progress || 0}%</b>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Manual Financial Update</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <Input
+                      type="number"
+                      value={selectedOp.budget || 0}
+                      onChange={(e) => {
+                        const value = Number(e.target.value);
+                        setSelectedOp({ ...selectedOp, budget: value });
+                        handleUpdateField(selectedOp.id, 'budget', value);
+                      }}
+                    />
+                    <Input
+                      type="number"
+                      value={selectedOp.expenses ?? selectedOp.spent ?? 0}
+                      onChange={(e) => {
+                        const value = Number(e.target.value);
+                        setSelectedOp({ ...selectedOp, expenses: value, spent: value });
+                        handleUpdateField(selectedOp.id, 'expenses', value);
+                      }}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-slate-700">
+                    Remaining: ₹{((selectedOp.budget || 0) - (selectedOp.expenses ?? selectedOp.spent ?? 0)).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <aside className="space-y-4">
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Quick Controls</p>
+                  <Select className="mt-3" value={selectedOp.status} onChange={(e) => {
+                    setSelectedOp({ ...selectedOp, status: e.target.value });
+                    handleUpdateField(selectedOp.id, 'status', e.target.value);
+                  }}>
+                    {statuses.map(s => <option key={s}>{s}</option>)}
+                  </Select>
+                  <Input
+                    className="mt-3"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={selectedOp.progress || 0}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setSelectedOp({ ...selectedOp, progress: value });
+                      handleUpdateField(selectedOp.id, 'progress', value);
+                    }}
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Notes & Updates</p>
+                  <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+                    {(selectedOp.notesList || []).length === 0 && <p className="text-sm text-slate-500">No updates yet.</p>}
+                    {(selectedOp.notesList || []).map((note: any) => (
+                      <div key={note.id} className="rounded-xl bg-slate-50 p-3 text-sm">
+                        <p className="text-xs font-semibold text-slate-500">{new Date(note.createdAt).toLocaleString()}</p>
+                        <p className="mt-1">{note.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <Textarea className="mt-3" placeholder="Add operation update..." value={newNote} onChange={(e) => setNewNote(e.target.value)} />
+                  <Button className="mt-2 w-full" onClick={handleAddNote} disabled={saving || !newNote.trim()}>
+                    {saving ? 'Adding...' : 'Add Update'}
+                  </Button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
