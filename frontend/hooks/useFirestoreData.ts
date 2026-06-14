@@ -290,17 +290,26 @@ async function syncTaskOperation(taskId: string, data: Partial<Task>) {
   await Promise.all(snapshot.docs.map((item) => updateDoc(doc(db, 'operations', item.id), operationUpdates)));
 }
 
-export async function checkIn(userId: string) {
+type AttendancePhotoPayload = {
+  photo?: string;
+  employeeId?: string;
+  employeeName?: string;
+};
+
+export async function checkIn(userId: string, payload: AttendancePhotoPayload = {}) {
   return addDoc(collection(db, 'attendance'), {
     userId,
+    employeeId: payload.employeeId || '',
+    employeeName: payload.employeeName || '',
     date: new Date().toISOString().slice(0, 10),
     checkIn: new Date().toISOString(),
+    checkInPhoto: payload.photo || '',
     status: 'Present',
     createdAt: serverTimestamp()
   });
 }
 
-export async function checkOut(userId: string) {
+export async function checkOut(userId: string, payload: AttendancePhotoPayload = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const q = query(
     collection(db, 'attendance'),
@@ -316,6 +325,9 @@ export async function checkOut(userId: string) {
   const docId = snapshot.docs[0].id;
   return updateDoc(doc(db, 'attendance', docId), {
     checkOut: new Date().toISOString(),
+    checkOutPhoto: payload.photo || '',
+    employeeId: payload.employeeId || snapshot.docs[0].data().employeeId || '',
+    employeeName: payload.employeeName || snapshot.docs[0].data().employeeName || '',
     updatedAt: serverTimestamp()
   });
 }

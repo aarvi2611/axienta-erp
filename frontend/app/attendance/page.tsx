@@ -10,7 +10,8 @@ import { useAuth } from '@/contexts/providers';
 import { auth } from '@/lib/firebase';
 import { API_URL } from '@/lib/api';
 import { authenticatedFetch } from '@/lib/auth-fetch';
-import { useState, useEffect, useMemo } from 'react';
+import { Camera, RefreshCcw } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 
 export default function Attendance() {
   const { profile } = useAuth();
@@ -24,11 +25,15 @@ export default function Attendance() {
   const [modalType, setModalType] = useState<'checkin' | 'checkout'>('checkin');
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState('');
+  const [capturedPhoto, setCapturedPhoto] = useState('');
+  const [cameraError, setCameraError] = useState('');
   const [leaveType, setLeaveType] = useState('Paid Leave');
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveFrom, setLeaveFrom] = useState(new Date().toISOString().split('T')[0]);
   const [leaveTo, setLeaveTo] = useState(new Date().toISOString().split('T')[0]);
   const [leaveMsg, setLeaveMsg] = useState('');
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -37,6 +42,53 @@ export default function Attendance() {
     setCurrentTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
     return () => clearInterval(timer);
   }, []);
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  };
+
+  useEffect(() => {
+    if (!showModal) {
+      stopCamera();
+      setCapturedPhoto('');
+      setCameraError('');
+      return;
+    }
+
+    let active = true;
+    setCapturedPhoto('');
+    setCameraError('');
+    const startCamera = async () => {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('Camera is not available in this browser.');
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+        if (!active) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => undefined);
+        }
+      } catch (error: any) {
+        setCameraError(error?.message || 'Unable to start camera. Please allow camera permission.');
+      }
+    };
+
+    void startCamera();
+
+    return () => {
+      active = false;
+      stopCamera();
+    };
+  }, [showModal, modalType]);
 
   const today = new Date().toISOString().slice(0, 10);
   const todayAttendance = useMemo(
@@ -79,11 +131,20 @@ export default function Attendance() {
 
   const handleCheckIn = async () => {
     if (!profile) return;
+    if (!capturedPhoto) {
+      setMessage('Error: Please capture your photo first.');
+      return;
+    }
     setIsProcessing(true);
     setMessage('');
     try {
-      await checkIn(profile.uid);
+      await checkIn(profile.uid, {
+        photo: capturedPhoto,
+        employeeId: profile.employeeId,
+        employeeName: profile.name
+      });
       setMessage('✓ Checked in successfully!');
+      stopCamera();
       setTimeout(() => {
         setShowModal(false);
         setMessage('');
@@ -97,11 +158,20 @@ export default function Attendance() {
 
   const handleCheckOut = async () => {
     if (!profile) return;
+    if (!capturedPhoto) {
+      setMessage('Error: Please capture your photo first.');
+      return;
+    }
     setIsProcessing(true);
     setMessage('');
     try {
-      await checkOut(profile.uid);
+      await checkOut(profile.uid, {
+        photo: capturedPhoto,
+        employeeId: profile.employeeId,
+        employeeName: profile.name
+      });
       setMessage('✓ Checked out successfully!');
+      stopCamera();
       setTimeout(() => {
         setShowModal(false);
         setMessage('');
@@ -160,6 +230,34 @@ export default function Attendance() {
     return `${hours}h ${minutes}m`;
   };
 
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setMessage('Error: Camera preview is not ready yet.');
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    const maxWidth = 640;
+    const scale = Math.min(1, maxWidth / video.videoWidth);
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.72));
+    setMessage('');
+  };
+
+  const retakePhoto = () => {
+    setCapturedPhoto('');
+    window.setTimeout(() => {
+      if (videoRef.current && streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+        void videoRef.current.play().catch(() => undefined);
+      }
+    }, 0);
+  };
+
   return (
     <AppShell>
       <PageHeader
@@ -209,6 +307,24 @@ export default function Attendance() {
                 </p>
               </div>
 
+              <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950">
+                {capturedPhoto ? (
+                  <img src={capturedPhoto} alt="Captured attendance proof" className="h-64 w-full object-cover" />
+                ) : (
+                  <video ref={videoRef} playsInline muted className="h-64 w-full object-cover" />
+                )}
+              </div>
+              {cameraError && <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-600">{cameraError}</p>}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={capturedPhoto ? retakePhoto : capturePhoto}
+                className="mb-5 w-full"
+              >
+                {capturedPhoto ? <RefreshCcw size={17} /> : <Camera size={17} />}
+                {capturedPhoto ? 'Retake Photo' : 'Capture Photo'}
+              </Button>
+
               {modalType === 'checkout' && todayRecord?.checkIn && (
                 <div className="mb-6 p-3 bg-blue-50 rounded-lg">
                   <p className="text-xs text-slate-600">Check-in Time</p>
@@ -231,6 +347,7 @@ export default function Attendance() {
                   onClick={() => {
                     setShowModal(false);
                     setMessage('');
+                    stopCamera();
                   }}
                   disabled={isProcessing}
                   className="flex-1"
@@ -239,7 +356,7 @@ export default function Attendance() {
                 </Button>
                 <Button
                   onClick={modalType === 'checkin' ? handleCheckIn : handleCheckOut}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !capturedPhoto}
                   className="flex-1"
                 >
                   {isProcessing ? 'Processing...' : modalType === 'checkin' ? 'Confirm Check-In' : 'Confirm Check-Out'}
@@ -369,6 +486,7 @@ export default function Attendance() {
                 <th className="p-3 font-semibold">Status</th>
                 <th className="p-3 font-semibold">Check-in</th>
                 <th className="p-3 font-semibold">Check-out</th>
+                <th className="p-3 font-semibold">Photo Proof</th>
                 <th className="p-3 font-semibold">Duration</th>
               </tr>
             </thead>
@@ -391,6 +509,13 @@ export default function Attendance() {
                     </td>
                     <td className="p-3 font-mono">{formatTime(a?.checkIn)}</td>
                     <td className="p-3 font-mono">{formatTime(a?.checkOut)}</td>
+                    <td className="p-3">
+                      <div className="flex gap-2">
+                        {a?.checkInPhoto && <img src={a.checkInPhoto} alt={`${e.name} check-in proof`} className="h-10 w-10 rounded-xl object-cover ring-2 ring-blue-100" />}
+                        {a?.checkOutPhoto && <img src={a.checkOutPhoto} alt={`${e.name} check-out proof`} className="h-10 w-10 rounded-xl object-cover ring-2 ring-emerald-100" />}
+                        {!a?.checkInPhoto && !a?.checkOutPhoto && <span className="text-slate-400">—</span>}
+                      </div>
+                    </td>
                     <td className="p-3 font-mono font-semibold text-green-600">
                       {a?.checkIn && a?.checkOut ? calculateDuration(a.checkIn, a.checkOut) : '—'}
                     </td>
@@ -399,7 +524,7 @@ export default function Attendance() {
               })}
               {employees.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500">
+                  <td colSpan={7} className="p-6 text-center text-slate-500">
                     No employees found in Firebase.
                   </td>
                 </tr>

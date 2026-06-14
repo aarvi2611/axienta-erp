@@ -87,6 +87,7 @@ export default function HR() {
   const [salaryMessage, setSalaryMessage] = useState('');
   const [salaryError, setSalaryError] = useState('');
   const [salarySaving, setSalarySaving] = useState(false);
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
   const { profile } = useAuth();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -128,6 +129,29 @@ export default function HR() {
   const leaveRequestsForHR = useMemo(() => {
     return leaveRequests || [];
   }, [leaveRequests]);
+
+  const employeeByUid = useMemo(() => {
+    return new Map(employees.map((employee) => [employee.uid, employee]));
+  }, [employees]);
+
+  const selectedDateAttendance = useMemo(() => {
+    return attendance.filter((record: any) => record.date === attendanceDate);
+  }, [attendance, attendanceDate]);
+
+  const checkedOutOnSelectedDate = selectedDateAttendance.filter((record: any) => record.checkOut).length;
+
+  const formatAttendanceTime = (value?: string) => {
+    if (!value) return '—';
+    return new Date(value).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  };
+
+  const calculateAttendanceDuration = (checkIn?: string, checkOut?: string) => {
+    if (!checkIn || !checkOut) return '—';
+    const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    return `${hours}h ${minutes}m`;
+  };
 
   const selectEmployee = (employee: UserProfile) => {
     setSelectedEmployee(employee);
@@ -519,6 +543,79 @@ export default function HR() {
           </div>
         </Card>
       </div>
+
+      <Card className="mt-6 border-blue-100 bg-gradient-to-br from-white to-blue-50/80">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[.18em] text-blue-700">Attendance Control Room</p>
+            <h3 className="mt-1 text-xl font-black text-navy-900">Daily Attendance History</h3>
+            <p className="text-sm text-slate-600">Review today, previous dates, timings, duration and photo proof from one HR view.</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3 lg:w-[520px]">
+            <div className="rounded-2xl bg-white p-3 shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-500">Date</p>
+              <Input type="date" value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)} />
+            </div>
+            <div className="rounded-2xl bg-emerald-50 p-3">
+              <p className="text-xs font-bold uppercase text-emerald-700">Present</p>
+              <b className="text-2xl text-emerald-900">{selectedDateAttendance.length}</b>
+            </div>
+            <div className="rounded-2xl bg-orange-50 p-3">
+              <p className="text-xs font-bold uppercase text-orange-700">Checked Out</p>
+              <b className="text-2xl text-orange-900">{checkedOutOnSelectedDate}</b>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-navy-900 text-white">
+              <tr>
+                <th className="p-3">Employee</th>
+                <th className="p-3">Employee ID</th>
+                <th className="p-3">Date</th>
+                <th className="p-3">Check In</th>
+                <th className="p-3">Check Out</th>
+                <th className="p-3">Duration</th>
+                <th className="p-3">Photo Proof</th>
+                <th className="p-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedDateAttendance.map((record: any) => {
+                const employee = employeeByUid.get(record.userId);
+                return (
+                  <tr key={record.id} className="border-t hover:bg-blue-50/60">
+                    <td className="p-3 font-bold">{record.employeeName || employee?.name || 'Unknown employee'}</td>
+                    <td className="p-3">{record.employeeId || employee?.employeeId || '—'}</td>
+                    <td className="p-3">{record.date ? new Date(record.date).toLocaleDateString('en-IN') : '—'}</td>
+                    <td className="p-3 font-mono">{formatAttendanceTime(record.checkIn)}</td>
+                    <td className="p-3 font-mono">{formatAttendanceTime(record.checkOut)}</td>
+                    <td className="p-3 font-mono font-semibold text-emerald-700">{calculateAttendanceDuration(record.checkIn, record.checkOut)}</td>
+                    <td className="p-3">
+                      <div className="flex gap-2">
+                        {record.checkInPhoto && <img src={record.checkInPhoto} alt="Check-in proof" className="h-12 w-12 rounded-xl object-cover ring-2 ring-blue-100" />}
+                        {record.checkOutPhoto && <img src={record.checkOutPhoto} alt="Check-out proof" className="h-12 w-12 rounded-xl object-cover ring-2 ring-emerald-100" />}
+                        {!record.checkInPhoto && !record.checkOutPhoto && <span className="text-slate-400">—</span>}
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${record.checkOut ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {record.checkOut ? 'Completed' : record.status || 'Present'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {selectedDateAttendance.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="p-6 text-center text-slate-500">No attendance records found for this date.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       <Card className="mt-6">
         <div className="mb-6 rounded-2xl border border-gold-200 bg-gold-50/70 p-4">
