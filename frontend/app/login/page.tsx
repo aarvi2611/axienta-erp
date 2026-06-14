@@ -77,7 +77,7 @@ export default function Login() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#020b1f] text-white">
+    <main className="relative min-h-screen overflow-y-auto bg-[#020b1f] text-white lg:h-screen lg:overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(19,91,188,.42),transparent_32%),radial-gradient(circle_at_84%_20%,rgba(245,158,11,.16),transparent_24%),linear-gradient(135deg,#020816_0%,#071b3b_48%,#020713_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-[48%] bg-[linear-gradient(180deg,transparent_0%,rgba(8,43,91,.58)_45%,rgba(2,8,22,.92)_100%)]" />
       <div className="absolute bottom-0 left-[38%] hidden h-[62%] w-[34%] opacity-55 lg:block">
@@ -89,12 +89,12 @@ export default function Login() {
       </div>
       <div className="absolute bottom-0 left-0 right-0 h-64 opacity-50 [background-image:linear-gradient(rgba(59,130,246,.16)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,.16)_1px,transparent_1px)] [background-size:42px_42px] [transform:perspective(420px)_rotateX(62deg)] [transform-origin:bottom]" />
 
-      <div className="relative z-10 grid min-h-screen gap-8 p-6 lg:grid-cols-[1.45fr_.95fr] lg:p-10 xl:p-12">
-        <section className="flex flex-col justify-between gap-10">
+      <div className="relative z-10 grid min-h-screen gap-6 p-5 lg:h-screen lg:grid-cols-[1.45fr_.95fr] lg:p-8 xl:p-10">
+        <section className="flex min-h-0 flex-col justify-between gap-6">
           <div>
             <div className="flex items-center gap-4">
-              <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl border border-gold-400 bg-navy-900/80 p-2 shadow-2xl shadow-gold-500/10">
-                <img src="/axienta-logo.png" alt="Axienta Business Consulting logo" className="h-full w-full object-contain" />
+              <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-2xl border border-gold-400 bg-navy-950/45 p-1.5 shadow-2xl shadow-gold-500/10 md:h-20 md:w-20">
+                <img src="/axienta-logo-transparent.png" alt="Axienta Business Consulting logo" className="h-full w-full object-contain" />
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight md:text-4xl">Axienta Business Consulting</h1>
@@ -104,22 +104,22 @@ export default function Login() {
               </div>
             </div>
 
-            <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="mt-14 max-w-4xl">
+            <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="mt-7 max-w-4xl xl:mt-9">
               <div className="inline-flex items-center gap-3 rounded-full border border-gold-500 bg-navy-950/70 px-4 py-2 text-xs font-black uppercase tracking-[.22em] text-gold-300 shadow-lg shadow-gold-500/10">
                 <BriefcaseBusiness size={16} />
                 Enterprise Business Operating System
               </div>
-              <h2 className="mt-7 max-w-3xl text-5xl font-black leading-[1.05] tracking-tight md:text-7xl">
+              <h2 className="mt-5 max-w-3xl text-4xl font-black leading-[1.05] tracking-tight md:text-6xl xl:text-7xl">
                 One Platform. <br />
                 Unlimited <span className="text-gold-400">Growth.</span>
               </h2>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-100">
+              <p className="mt-5 max-w-2xl text-base leading-7 text-slate-100 xl:text-lg xl:leading-8">
                 Axienta Business Consulting empowers organizations to streamline operations, boost productivity, and drive growth with intelligent automation and real-time insights.
               </p>
-              <div className="mt-7 h-1 w-20 rounded-full bg-gold-400" />
+              <div className="mt-5 h-1 w-20 rounded-full bg-gold-400" />
             </motion.div>
 
-            <div className="mt-8 grid max-w-4xl gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-6 grid max-w-4xl gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {stats.map(({ label, value, icon: Icon }) => (
                 <div key={label} className="flex items-start gap-3 border-white/10 xl:border-r xl:last:border-r-0">
                   <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-gold-500 bg-blue-950/70 text-gold-400">
@@ -133,26 +133,26 @@ export default function Login() {
               ))}
             </div>
 
-            <div className="mt-10 max-w-5xl">
+            <div className="mt-6 max-w-5xl xl:mt-8">
               <div className="flex items-center gap-4">
                 <h3 className="text-xl font-bold text-white">Everything You Need. All in One Place.</h3>
                 <span className="hidden h-px flex-1 bg-white/20 md:block" />
               </div>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {modules.map(({ title, body, icon: Icon }) => (
-                  <div key={title} className="rounded-xl border border-white/10 bg-white/[.075] p-5 shadow-2xl shadow-blue-950/20 backdrop-blur-xl">
-                    <span className="grid h-12 w-12 place-items-center rounded-full bg-blue-900/70 text-gold-400">
-                      <Icon size={24} />
+                  <div key={title} className="rounded-xl border border-white/10 bg-white/[.075] p-4 shadow-2xl shadow-blue-950/20 backdrop-blur-xl">
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-blue-900/70 text-gold-400">
+                      <Icon size={21} />
                     </span>
-                    <h4 className="mt-4 text-lg font-black">{title}</h4>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">{body}</p>
+                    <h4 className="mt-3 text-base font-black">{title}</h4>
+                    <p className="mt-1 text-sm leading-6 text-slate-200">{body}</p>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="flex max-w-3xl items-center gap-4 border-t border-white/10 pt-6 text-slate-200">
+          <div className="flex max-w-3xl items-center gap-4 border-t border-white/10 pt-4 text-slate-200">
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-gold-400 bg-white/5 text-white">
               <ShieldCheck size={24} />
             </div>
@@ -166,22 +166,22 @@ export default function Login() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.08 }}
-            className="w-full max-w-xl rounded-3xl border border-white/25 bg-blue-950/35 p-7 shadow-2xl shadow-black/30 backdrop-blur-2xl md:p-10"
+            className="w-full max-w-xl rounded-3xl border border-white/25 bg-blue-950/35 p-6 shadow-2xl shadow-black/30 backdrop-blur-2xl md:p-8 xl:p-9"
           >
-            <div className="mx-auto grid h-28 w-28 place-items-center overflow-hidden rounded-full border border-gold-400 bg-navy-950/70 p-4 shadow-2xl shadow-gold-500/10">
-              <img src="/axienta-logo.png" alt="Axienta logo" className="h-full w-full object-contain" />
+            <div className="mx-auto grid h-24 w-24 place-items-center overflow-hidden rounded-full border border-gold-400 bg-navy-950/40 p-2 shadow-2xl shadow-gold-500/10 xl:h-28 xl:w-28">
+              <img src="/axienta-logo-transparent.png" alt="Axienta logo" className="h-full w-full object-contain" />
             </div>
 
-            <div className="mt-6 text-center">
-              <h2 className="text-4xl font-black">
+            <div className="mt-5 text-center">
+              <h2 className="text-3xl font-black xl:text-4xl">
                 Welcome <span className="text-gold-400">Back!</span>
               </h2>
-              <p className="mx-auto mt-4 max-w-md text-base leading-7 text-slate-200">
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-200 xl:text-base xl:leading-7">
                 Sign in to access your Axienta Business Consulting workspace and manage your business with ease.
               </p>
             </div>
 
-            <div className="mt-8 space-y-5">
+            <div className="mt-6 space-y-4">
               <label className="block">
                 <span className="text-sm font-bold text-white">Email Address</span>
                 <span className="relative mt-2 block">
@@ -192,7 +192,7 @@ export default function Login() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     required
-                    className="h-14 rounded-xl border-white/25 bg-navy-950/45 pl-12 text-base text-white placeholder:text-slate-300 hover:border-gold-400/70"
+                    className="h-12 rounded-xl border-white/25 bg-navy-950/45 pl-12 text-base text-white placeholder:text-slate-300 hover:border-gold-400/70 xl:h-14"
                   />
                 </span>
               </label>
@@ -207,7 +207,7 @@ export default function Login() {
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     required
-                    className="h-14 rounded-xl border-white/25 bg-navy-950/45 pl-12 pr-12 text-base text-white placeholder:text-slate-300 hover:border-gold-400/70"
+                    className="h-12 rounded-xl border-white/25 bg-navy-950/45 pl-12 pr-12 text-base text-white placeholder:text-slate-300 hover:border-gold-400/70 xl:h-14"
                   />
                   <button
                     type="button"
@@ -227,12 +227,12 @@ export default function Login() {
 
             {err && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600">{err}</p>}
 
-            <Button type="submit" disabled={submitting} className="mt-5 h-14 w-full rounded-xl bg-gradient-to-r from-gold-400 to-yellow-500 text-base font-black text-navy-950 shadow-xl shadow-gold-500/20 hover:from-gold-300 hover:to-yellow-400">
+            <Button type="submit" disabled={submitting} className="mt-5 h-12 w-full rounded-xl bg-gradient-to-r from-gold-400 to-yellow-500 text-base font-black text-navy-950 shadow-xl shadow-gold-500/20 hover:from-gold-300 hover:to-yellow-400 xl:h-14">
               <Rocket size={19} />
               {submitting ? 'Signing In...' : 'Access Dashboard'}
             </Button>
 
-            <div className="mt-8 grid grid-cols-2 gap-3 text-xs text-slate-200 sm:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 gap-3 text-xs text-slate-200 sm:grid-cols-4">
               {securityNotes.map((note) => (
                 <div key={note} className="flex items-center gap-2">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-800/70 text-gold-300">
