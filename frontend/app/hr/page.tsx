@@ -593,34 +593,60 @@ export default function HR() {
                     <td className="p-3 font-mono">{formatAttendanceTime(record.checkIn)}</td>
                     <td className="p-3 font-mono">{formatAttendanceTime(record.checkOut)}</td>
                     <td className="p-3 font-mono font-semibold text-emerald-700">{calculateAttendanceDuration(record.checkIn, record.checkOut)}</td>
-                    <td className="p-3">
-                      <div className="flex gap-2">
+                    <td
+                      className={`p-3 ${record.checkInPhoto || record.checkOutPhoto ? 'cursor-pointer' : ''}`}
+                      title={record.checkInPhoto || record.checkOutPhoto ? 'Click to preview photo proof' : undefined}
+                      onClick={() => {
+                        if (record.checkInPhoto) {
+                          setPhotoPreview({
+                            src: record.checkInPhoto,
+                            title: `${record.employeeName || employee?.name || 'Employee'} check-in photo`,
+                            subtitle: `${record.date ? new Date(record.date).toLocaleDateString('en-IN') : 'Attendance'} • ${formatAttendanceTime(record.checkIn)}`
+                          });
+                        } else if (record.checkOutPhoto) {
+                          setPhotoPreview({
+                            src: record.checkOutPhoto,
+                            title: `${record.employeeName || employee?.name || 'Employee'} check-out photo`,
+                            subtitle: `${record.date ? new Date(record.date).toLocaleDateString('en-IN') : 'Attendance'} • ${formatAttendanceTime(record.checkOut)}`
+                          });
+                        }
+                      }}
+                    >
+                      <div className="flex flex-wrap gap-2">
                         {record.checkInPhoto && (
                           <button
                             type="button"
                             title="Preview check-in photo"
-                            onClick={() => setPhotoPreview({
-                              src: record.checkInPhoto,
-                              title: `${record.employeeName || employee?.name || 'Employee'} check-in photo`,
-                              subtitle: `${record.date ? new Date(record.date).toLocaleDateString('en-IN') : 'Attendance'} • ${formatAttendanceTime(record.checkIn)}`
-                            })}
-                            className="rounded-xl transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPhotoPreview({
+                                src: record.checkInPhoto,
+                                title: `${record.employeeName || employee?.name || 'Employee'} check-in photo`,
+                                subtitle: `${record.date ? new Date(record.date).toLocaleDateString('en-IN') : 'Attendance'} • ${formatAttendanceTime(record.checkIn)}`
+                              });
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700 transition hover:scale-105 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
                           >
-                            <img src={record.checkInPhoto} alt="Check-in proof" className="h-12 w-12 rounded-xl object-cover ring-2 ring-blue-100" />
+                            <img src={record.checkInPhoto} alt="Check-in proof" className="h-10 w-10 rounded-lg object-cover ring-2 ring-blue-100" />
+                            View In
                           </button>
                         )}
                         {record.checkOutPhoto && (
                           <button
                             type="button"
                             title="Preview check-out photo"
-                            onClick={() => setPhotoPreview({
-                              src: record.checkOutPhoto,
-                              title: `${record.employeeName || employee?.name || 'Employee'} check-out photo`,
-                              subtitle: `${record.date ? new Date(record.date).toLocaleDateString('en-IN') : 'Attendance'} • ${formatAttendanceTime(record.checkOut)}`
-                            })}
-                            className="rounded-xl transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPhotoPreview({
+                                src: record.checkOutPhoto,
+                                title: `${record.employeeName || employee?.name || 'Employee'} check-out photo`,
+                                subtitle: `${record.date ? new Date(record.date).toLocaleDateString('en-IN') : 'Attendance'} • ${formatAttendanceTime(record.checkOut)}`
+                              });
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700 transition hover:scale-105 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                           >
-                            <img src={record.checkOutPhoto} alt="Check-out proof" className="h-12 w-12 rounded-xl object-cover ring-2 ring-emerald-100" />
+                            <img src={record.checkOutPhoto} alt="Check-out proof" className="h-10 w-10 rounded-lg object-cover ring-2 ring-emerald-100" />
+                            View Out
                           </button>
                         )}
                         {!record.checkInPhoto && !record.checkOutPhoto && <span className="text-slate-400">—</span>}

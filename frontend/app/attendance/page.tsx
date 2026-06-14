@@ -520,34 +520,60 @@ export default function Attendance() {
                     </td>
                     <td className="p-3 font-mono">{formatTime(a?.checkIn)}</td>
                     <td className="p-3 font-mono">{formatTime(a?.checkOut)}</td>
-                    <td className="p-3">
-                      <div className="flex gap-2">
+                    <td
+                      className={`p-3 ${a?.checkInPhoto || a?.checkOutPhoto ? 'cursor-pointer' : ''}`}
+                      title={a?.checkInPhoto || a?.checkOutPhoto ? 'Click to preview photo proof' : undefined}
+                      onClick={() => {
+                        if (a?.checkInPhoto) {
+                          setPhotoPreview({
+                            src: a.checkInPhoto,
+                            title: `${e.name} check-in photo`,
+                            subtitle: `${a?.date ? new Date(a.date).toLocaleDateString('en-IN') : 'Today'} • ${formatTime(a?.checkIn)}`
+                          });
+                        } else if (a?.checkOutPhoto) {
+                          setPhotoPreview({
+                            src: a.checkOutPhoto,
+                            title: `${e.name} check-out photo`,
+                            subtitle: `${a?.date ? new Date(a.date).toLocaleDateString('en-IN') : 'Today'} • ${formatTime(a?.checkOut)}`
+                          });
+                        }
+                      }}
+                    >
+                      <div className="flex flex-wrap gap-2">
                         {a?.checkInPhoto && (
                           <button
                             type="button"
                             title="Preview check-in photo"
-                            onClick={() => setPhotoPreview({
-                              src: a.checkInPhoto,
-                              title: `${e.name} check-in photo`,
-                              subtitle: `${a?.date ? new Date(a.date).toLocaleDateString('en-IN') : 'Today'} • ${formatTime(a?.checkIn)}`
-                            })}
-                            className="rounded-xl transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPhotoPreview({
+                                src: a.checkInPhoto,
+                                title: `${e.name} check-in photo`,
+                                subtitle: `${a?.date ? new Date(a.date).toLocaleDateString('en-IN') : 'Today'} • ${formatTime(a?.checkIn)}`
+                              });
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700 transition hover:scale-105 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
                           >
-                            <img src={a.checkInPhoto} alt={`${e.name} check-in proof`} className="h-10 w-10 rounded-xl object-cover ring-2 ring-blue-100" />
+                            <img src={a.checkInPhoto} alt={`${e.name} check-in proof`} className="h-9 w-9 rounded-lg object-cover ring-2 ring-blue-100" />
+                            View In
                           </button>
                         )}
                         {a?.checkOutPhoto && (
                           <button
                             type="button"
                             title="Preview check-out photo"
-                            onClick={() => setPhotoPreview({
-                              src: a.checkOutPhoto,
-                              title: `${e.name} check-out photo`,
-                              subtitle: `${a?.date ? new Date(a.date).toLocaleDateString('en-IN') : 'Today'} • ${formatTime(a?.checkOut)}`
-                            })}
-                            className="rounded-xl transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPhotoPreview({
+                                src: a.checkOutPhoto,
+                                title: `${e.name} check-out photo`,
+                                subtitle: `${a?.date ? new Date(a.date).toLocaleDateString('en-IN') : 'Today'} • ${formatTime(a?.checkOut)}`
+                              });
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700 transition hover:scale-105 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                           >
-                            <img src={a.checkOutPhoto} alt={`${e.name} check-out proof`} className="h-10 w-10 rounded-xl object-cover ring-2 ring-emerald-100" />
+                            <img src={a.checkOutPhoto} alt={`${e.name} check-out proof`} className="h-9 w-9 rounded-lg object-cover ring-2 ring-emerald-100" />
+                            View Out
                           </button>
                         )}
                         {!a?.checkInPhoto && !a?.checkOutPhoto && <span className="text-slate-400">—</span>}
