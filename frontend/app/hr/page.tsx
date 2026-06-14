@@ -14,7 +14,7 @@ import { auth, db } from '@/lib/firebase';
 import { API_URL } from '@/lib/api';
 import { authenticatedFetch } from '@/lib/auth-fetch';
 import { SalarySlip, UserProfile } from '@/types';
-import { Download, FileSignature, Send, Trash2, Wallet } from 'lucide-react';
+import { Download, FileSignature, Send, Trash2, Wallet, X } from 'lucide-react';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
@@ -88,6 +88,7 @@ export default function HR() {
   const [salaryError, setSalaryError] = useState('');
   const [salarySaving, setSalarySaving] = useState(false);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [photoPreview, setPhotoPreview] = useState<{ src: string; title: string; subtitle: string } | null>(null);
   const { profile } = useAuth();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -594,8 +595,34 @@ export default function HR() {
                     <td className="p-3 font-mono font-semibold text-emerald-700">{calculateAttendanceDuration(record.checkIn, record.checkOut)}</td>
                     <td className="p-3">
                       <div className="flex gap-2">
-                        {record.checkInPhoto && <img src={record.checkInPhoto} alt="Check-in proof" className="h-12 w-12 rounded-xl object-cover ring-2 ring-blue-100" />}
-                        {record.checkOutPhoto && <img src={record.checkOutPhoto} alt="Check-out proof" className="h-12 w-12 rounded-xl object-cover ring-2 ring-emerald-100" />}
+                        {record.checkInPhoto && (
+                          <button
+                            type="button"
+                            title="Preview check-in photo"
+                            onClick={() => setPhotoPreview({
+                              src: record.checkInPhoto,
+                              title: `${record.employeeName || employee?.name || 'Employee'} check-in photo`,
+                              subtitle: `${record.date ? new Date(record.date).toLocaleDateString('en-IN') : 'Attendance'} • ${formatAttendanceTime(record.checkIn)}`
+                            })}
+                            className="rounded-xl transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          >
+                            <img src={record.checkInPhoto} alt="Check-in proof" className="h-12 w-12 rounded-xl object-cover ring-2 ring-blue-100" />
+                          </button>
+                        )}
+                        {record.checkOutPhoto && (
+                          <button
+                            type="button"
+                            title="Preview check-out photo"
+                            onClick={() => setPhotoPreview({
+                              src: record.checkOutPhoto,
+                              title: `${record.employeeName || employee?.name || 'Employee'} check-out photo`,
+                              subtitle: `${record.date ? new Date(record.date).toLocaleDateString('en-IN') : 'Attendance'} • ${formatAttendanceTime(record.checkOut)}`
+                            })}
+                            className="rounded-xl transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                          >
+                            <img src={record.checkOutPhoto} alt="Check-out proof" className="h-12 w-12 rounded-xl object-cover ring-2 ring-emerald-100" />
+                          </button>
+                        )}
                         {!record.checkInPhoto && !record.checkOutPhoto && <span className="text-slate-400">—</span>}
                       </div>
                     </td>
@@ -1100,6 +1127,24 @@ export default function HR() {
           )}
         </div>
       </Card>
+      {photoPreview && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-navy-900/80 p-4 backdrop-blur-md" onClick={() => setPhotoPreview(null)}>
+          <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4">
+              <div>
+                <h3 className="text-lg font-black text-navy-900">{photoPreview.title}</h3>
+                <p className="text-sm text-slate-500">{photoPreview.subtitle}</p>
+              </div>
+              <Button variant="ghost" className="h-10 w-10 px-0" onClick={() => setPhotoPreview(null)} aria-label="Close photo preview">
+                <X size={18} />
+              </Button>
+            </div>
+            <div className="bg-slate-950 p-3">
+              <img src={photoPreview.src} alt={photoPreview.title} className="mx-auto max-h-[72vh] w-full rounded-xl object-contain" />
+            </div>
+          </div>
+        </div>
+      )}
       {printSalarySlip && (
         <div className="print-only">
           <SalarySlipPrint slip={printSalarySlip} />

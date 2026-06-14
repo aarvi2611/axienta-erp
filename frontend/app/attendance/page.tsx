@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/providers';
 import { auth } from '@/lib/firebase';
 import { API_URL } from '@/lib/api';
 import { authenticatedFetch } from '@/lib/auth-fetch';
-import { Camera, RefreshCcw } from 'lucide-react';
+import { Camera, RefreshCcw, X } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 
 export default function Attendance() {
@@ -27,6 +27,7 @@ export default function Attendance() {
   const [message, setMessage] = useState('');
   const [capturedPhoto, setCapturedPhoto] = useState('');
   const [cameraError, setCameraError] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<{ src: string; title: string; subtitle: string } | null>(null);
   const [leaveType, setLeaveType] = useState('Paid Leave');
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveFrom, setLeaveFrom] = useState(new Date().toISOString().split('T')[0]);
@@ -309,7 +310,17 @@ export default function Attendance() {
 
               <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950">
                 {capturedPhoto ? (
-                  <img src={capturedPhoto} alt="Captured attendance proof" className="h-64 w-full object-cover" />
+                  <button
+                    type="button"
+                    className="block w-full"
+                    onClick={() => setPhotoPreview({
+                      src: capturedPhoto,
+                      title: modalType === 'checkin' ? 'Check-in photo preview' : 'Check-out photo preview',
+                      subtitle: `${profile?.name || 'Employee'} • ${new Date().toLocaleString('en-IN')}`
+                    })}
+                  >
+                    <img src={capturedPhoto} alt="Captured attendance proof" className="h-64 w-full object-cover" />
+                  </button>
                 ) : (
                   <video ref={videoRef} playsInline muted className="h-64 w-full object-cover" />
                 )}
@@ -511,8 +522,34 @@ export default function Attendance() {
                     <td className="p-3 font-mono">{formatTime(a?.checkOut)}</td>
                     <td className="p-3">
                       <div className="flex gap-2">
-                        {a?.checkInPhoto && <img src={a.checkInPhoto} alt={`${e.name} check-in proof`} className="h-10 w-10 rounded-xl object-cover ring-2 ring-blue-100" />}
-                        {a?.checkOutPhoto && <img src={a.checkOutPhoto} alt={`${e.name} check-out proof`} className="h-10 w-10 rounded-xl object-cover ring-2 ring-emerald-100" />}
+                        {a?.checkInPhoto && (
+                          <button
+                            type="button"
+                            title="Preview check-in photo"
+                            onClick={() => setPhotoPreview({
+                              src: a.checkInPhoto,
+                              title: `${e.name} check-in photo`,
+                              subtitle: `${a?.date ? new Date(a.date).toLocaleDateString('en-IN') : 'Today'} • ${formatTime(a?.checkIn)}`
+                            })}
+                            className="rounded-xl transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          >
+                            <img src={a.checkInPhoto} alt={`${e.name} check-in proof`} className="h-10 w-10 rounded-xl object-cover ring-2 ring-blue-100" />
+                          </button>
+                        )}
+                        {a?.checkOutPhoto && (
+                          <button
+                            type="button"
+                            title="Preview check-out photo"
+                            onClick={() => setPhotoPreview({
+                              src: a.checkOutPhoto,
+                              title: `${e.name} check-out photo`,
+                              subtitle: `${a?.date ? new Date(a.date).toLocaleDateString('en-IN') : 'Today'} • ${formatTime(a?.checkOut)}`
+                            })}
+                            className="rounded-xl transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                          >
+                            <img src={a.checkOutPhoto} alt={`${e.name} check-out proof`} className="h-10 w-10 rounded-xl object-cover ring-2 ring-emerald-100" />
+                          </button>
+                        )}
                         {!a?.checkInPhoto && !a?.checkOutPhoto && <span className="text-slate-400">—</span>}
                       </div>
                     </td>
@@ -533,6 +570,24 @@ export default function Attendance() {
           </table>
         </div>
       </Card>
+      {photoPreview && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-navy-900/80 p-4 backdrop-blur-md" onClick={() => setPhotoPreview(null)}>
+          <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4">
+              <div>
+                <h3 className="text-lg font-black text-navy-900">{photoPreview.title}</h3>
+                <p className="text-sm text-slate-500">{photoPreview.subtitle}</p>
+              </div>
+              <Button variant="ghost" className="h-10 w-10 px-0" onClick={() => setPhotoPreview(null)} aria-label="Close photo preview">
+                <X size={18} />
+              </Button>
+            </div>
+            <div className="bg-slate-950 p-3">
+              <img src={photoPreview.src} alt={photoPreview.title} className="mx-auto max-h-[72vh] w-full rounded-xl object-contain" />
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
