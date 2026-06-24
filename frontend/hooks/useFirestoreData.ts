@@ -10,13 +10,14 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   getDocs,
   type QueryConstraint
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Lead, Task, UserProfile } from '@/types';
+import { ClientDailyUpdate, ClientProfile, Lead, Task, UserProfile } from '@/types';
 import { useAuth } from '@/contexts/providers';
 
 type Status = 'loading' | 'success' | 'error';
@@ -45,7 +46,8 @@ function taskStatusToOperation(status?: Task['status']) {
 
 export function useCollection<T>(
   collectionName: string,
-  constraints: QueryConstraint[] = []
+  constraints: QueryConstraint[] = [],
+  deps: any[] = []
 ) {
   const [data, setData] = useState<T[]>([]);
   const [status, setStatus] = useState<Status>('loading');
@@ -76,7 +78,7 @@ export function useCollection<T>(
     );
 
     return unsub;
-  }, [collectionName, key]);
+  }, [collectionName, key, ...deps]);
 
   return {
     data,
@@ -102,7 +104,7 @@ export function useLeads() {
       ? [where('ownerId', '==', profile.uid)]
       : [];
 
-  return useCollection<Lead>('leads', constraints);
+  return useCollection<Lead>('leads', constraints, [profile?.uid, profile?.role]);
 }
 
 export function useEmployees() {
@@ -119,7 +121,7 @@ export function useTasks() {
       ? [where('assignedTo', '==', profile.uid)]
       : [];
 
-  return useCollection<Task>('tasks', constraints);
+  return useCollection<Task>('tasks', constraints, [profile?.uid, profile?.role]);
 }
 
 export function useAttendance() {
@@ -360,6 +362,16 @@ export function useOperations() {
   return useCollection<any>('operations', [orderBy('createdAt', 'desc')]);
 }
 
+export function useClients() {
+  return useCollection<ClientProfile>('clients', [orderBy('createdAt', 'desc')]);
+}
+
+export function useClientDailyUpdates(clientId?: string) {
+  const normalizedClientId = clientId?.trim().toUpperCase();
+  const constraints = normalizedClientId ? [where('clientId', '==', normalizedClientId)] : [];
+  return useCollection<ClientDailyUpdate>('client_daily_updates', constraints, [normalizedClientId]);
+}
+
 export async function createOperation(data: any, createdBy?: string) {
   return addDoc(collection(db, 'operations'), {
     clientName: data.clientName || '',
@@ -381,6 +393,70 @@ export async function createOperation(data: any, createdBy?: string) {
     notes: data.notes || '',
     details: data.details || '',
     attachments: data.attachments || [],
+    createdBy: createdBy || '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+function normalizeClientId(clientId: string) {
+  return clientId.trim().toUpperCase();
+}
+
+export async function createClient(data: Partial<ClientProfile>, createdBy?: string) {
+  const clientId = normalizeClientId(data.clientId || '');
+  if (!clientId) throw new Error('Client ID is required');
+
+  return setDoc(doc(db, 'clients', clientId), {
+    clientId,
+    businessName: data.businessName || 'Untitled Client',
+    businessProfiles: data.businessProfiles || [],
+    contactName: data.contactName || '',
+    contactEmail: data.contactEmail || '',
+    contactPhone: data.contactPhone || '',
+    supportEmail: data.supportEmail || '',
+    supportPhone: data.supportPhone || '',
+    clientStatus: data.clientStatus || 'Active',
+    accountManager: data.accountManager || '',
+    monthlyRetainer: Number(data.monthlyRetainer || 0),
+    notes: data.notes || '',
+    createdBy: createdBy || '',
+    createdAt: data.createdAt || serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+}
+
+export async function updateClient(id: string, data: Partial<ClientProfile>) {
+  return updateDoc(doc(db, 'clients', id), {
+    ...data,
+    clientId: data.clientId ? normalizeClientId(data.clientId) : data.clientId,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteClient(id: string) {
+  return deleteDoc(doc(db, 'clients', id));
+}
+
+export async function createClientDailyUpdate(data: Partial<ClientDailyUpdate>, createdBy?: string) {
+  const clientId = normalizeClientId(data.clientId || '');
+  if (!clientId || !data.updateDate || !data.businessProfile) {
+    throw new Error('Client ID, business profile and date are required');
+  }
+
+  return addDoc(collection(db, 'client_daily_updates'), {
+    clientId,
+    businessProfile: data.businessProfile,
+    updateDate: data.updateDate,
+    reviewsReceived: Number(data.reviewsReceived || 0),
+    reviewsDropped: Number(data.reviewsDropped || 0),
+    callsReceived: Number(data.callsReceived || 0),
+    paymentsMade: Number(data.paymentsMade || 0),
+    paymentsPending: Number(data.paymentsPending || 0),
+    issueStatus: data.issueStatus || 'None',
+    issueSummary: data.issueSummary || '',
+    contactStatus: data.contactStatus || 'Open',
+    note: data.note || '',
     createdBy: createdBy || '',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()

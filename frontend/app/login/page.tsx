@@ -221,9 +221,14 @@ export default function Login() {
               </label>
             </div>
 
-            <a className="mt-4 block text-right text-sm font-bold text-gold-300 transition hover:text-gold-200" href="/forgot-password">
-              Forgot Password?
-            </a>
+            <div className="mt-4 flex items-center justify-between gap-3 text-sm font-bold">
+              <a className="text-gold-300 transition hover:text-gold-200" href="/forgot-password">
+                Forgot Password?
+              </a>
+              <a className="text-cyan-300 transition hover:text-cyan-200" href="/client-portal">
+                Client Portal
+              </a>
+            </div>
 
             {err && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600">{err}</p>}
 
