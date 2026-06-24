@@ -13,6 +13,17 @@ export type UserRole =
   | "operations"
   | "hr";
 
+export type Role =
+  | "CEO"
+  | "Admin"
+  | "Head Manager"
+  | "Team Manager"
+  | "Sales Executive"
+  | "Calling Executive"
+  | "Data Scraper"
+  | "Operations Team"
+  | "HR";
+
 export const ROLE_LABELS: Record<UserRole, string> = {
   ceo: "CEO",
   admin: "Admin",
@@ -44,6 +55,20 @@ export interface User {
   joiningDate?: string;
   salary?: number;
   bio?: string;
+}
+
+export interface UserProfile {
+  uid: string;
+  employeeId: string;
+  name: string;
+  email: string;
+  role: "CEO" | "Admin" | "Head Manager" | "Team Manager" | "Sales Executive" | "Calling Executive" | "Data Scraper" | "Operations Team" | "HR";
+  department: string;
+  phone?: string;
+  avatar?: string;
+  status: "active" | "inactive";
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type LeadStatus =
@@ -86,6 +111,8 @@ export interface Lead {
   category?: string;
   rating?: number;
   status: LeadStatus;
+  stage?: string;
+  ownerId?: string;
   assignedTo?: string;
   assignedToName?: string;
   source?: string;
@@ -115,10 +142,23 @@ export interface TimelineEvent {
   createdAt: string;
 }
 
-export type TaskStatus = "pending" | "in_progress" | "completed" | "rejected";
+export type TaskStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "rejected"
+  | "Pending"
+  | "Accepted"
+  | "In Progress"
+  | "Submitted for Review"
+  | "Revision Requested"
+  | "Approved"
+  | "Closed"
+  | "Completed"
+  | "Rejected";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
-export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+export const TASK_STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
   in_progress: "In Progress",
   completed: "Completed",
@@ -137,6 +177,7 @@ export interface Task {
   title: string;
   description: string;
   assignedTo: string;
+  assignedName?: string;
   assignedToName: string;
   assignedBy: string;
   assignedByName: string;
@@ -147,6 +188,10 @@ export interface Task {
   statusUpdates: StatusUpdate[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
+  completionNote?: string;
+  managerFeedback?: string;
+  stageNote?: string;
 }
 
 export interface StatusUpdate {
@@ -240,7 +285,44 @@ export interface Department {
   employeeCount: number;
 }
 
-// Role permissions map
+export interface ClientProfile {
+  id: string;
+  clientId: string;
+  businessName: string;
+  businessProfiles: string[];
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  supportEmail?: string;
+  supportPhone?: string;
+  clientStatus: 'Active' | 'Paused' | 'At Risk';
+  accountManager?: string;
+  monthlyRetainer?: number;
+  notes?: string;
+  createdBy?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface ClientDailyUpdate {
+  id: string;
+  clientId: string;
+  businessProfile: string;
+  updateDate: string;
+  reviewsReceived: number;
+  reviewsDropped: number;
+  callsReceived: number;
+  paymentsMade: number;
+  paymentsPending: number;
+  issueStatus: 'None' | 'Open' | 'Investigating' | 'Resolved';
+  issueSummary?: string;
+  contactStatus?: 'Open' | 'Needs Follow-up' | 'Closed';
+  note?: string;
+  createdBy?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   ceo: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
