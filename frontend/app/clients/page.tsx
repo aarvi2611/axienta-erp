@@ -7,13 +7,16 @@ import {
   CircleDollarSign,
   Clock3,
   Edit3,
+  Image as ImageIcon,
   Plus,
   RefreshCw,
   Search,
   ShieldAlert,
   Trash2,
+  Upload,
   Users,
-  Wrench
+  Wrench,
+  X
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { PageHeader } from '@/components/dashboard/dashboard-components';
@@ -25,7 +28,10 @@ import {
   createClient,
   createClientDailyUpdate,
   deleteClient,
+  removeClientAsset,
   updateClient,
+  uploadClientAsset,
+  useClientAsset,
   useClientDailyUpdates,
   useClients
 } from '@/hooks/useFirestoreData';
@@ -89,6 +95,9 @@ export default function ClientsPage() {
   );
 
   const { data: clientUpdates } = useClientDailyUpdates(selectedClient?.clientId);
+  const { data: clientAssets } = useClientAsset(selectedClient?.clientId);
+  const clientAsset = clientAssets[0] || null;
+  const [uploadingKind, setUploadingKind] = useState<'' | 'logo' | 'cover'>('');
 
   useEffect(() => {
     if (!selectedClientId && clients.length > 0) {
@@ -526,6 +535,86 @@ export default function ClientsPage() {
                 </Button>
               </div>
             </form>
+          </Card>
+
+          <Card className="border-slate-200 bg-gradient-to-br from-white to-cyan-50 shadow-xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Client Branding</h2>
+                <p className="text-sm text-slate-500">Upload logo and cover image — visible on the client portal.</p>
+              </div>
+              <ImageIcon className="text-cyan-600" size={22} />
+            </div>
+
+            {!selectedClient ? (
+              <p className="mt-4 text-sm text-slate-500">Select a client to manage branding.</p>
+            ) : (
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {(['logo', 'cover'] as const).map((kind) => {
+                  const url = kind === 'logo' ? clientAsset?.logoUrl : clientAsset?.coverUrl;
+                  return (
+                    <div key={kind} className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{kind}</p>
+                      <div className="mt-2 grid h-32 w-full place-items-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50">
+                        {url ? (
+                          <img
+                            src={url}
+                            alt={`${kind}`}
+                            className={kind === 'logo' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+                          />
+                        ) : (
+                          <span className="text-sm text-slate-400">No {kind} uploaded</span>
+                        )}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <label className="inline-flex cursor-pointer items-center gap-1 rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-cyan-700">
+                          <Upload size={14} />
+                          {uploadingKind === kind ? 'Uploading…' : 'Upload'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={uploadingKind !== ''}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setUploadingKind(kind);
+                              try {
+                                await uploadClientAsset(selectedClient.clientId, file, kind, profile?.uid);
+                                setMessage(`${kind === 'logo' ? 'Logo' : 'Cover'} uploaded.`);
+                              } catch (err) {
+                                setMessage(`Upload failed: ${(err as Error).message}`);
+                              } finally {
+                                setUploadingKind('');
+                                e.target.value = '';
+                              }
+                            }}
+                          />
+                        </label>
+                        {url && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={async () => {
+                              try {
+                                await removeClientAsset(selectedClient.clientId, kind);
+                                setMessage(`${kind === 'logo' ? 'Logo' : 'Cover'} removed.`);
+                              } catch (err) {
+                                setMessage(`Remove failed: ${(err as Error).message}`);
+                              }
+                            }}
+                          >
+                            <X size={14} /> Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         </div>
       </div>

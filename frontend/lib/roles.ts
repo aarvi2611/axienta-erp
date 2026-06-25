@@ -17,6 +17,8 @@ export const routePermissions: Record<string, Role[]> = {
   '/letters': ['CEO', 'Head Manager', 'HR'],
   '/operations': ['CEO', 'Admin', 'Head Manager', 'Operations Team'],
   '/clients': ['CEO', 'Head Manager', 'Operations Team'],
+  '/operations/daily-updates': ['CEO', 'Head Manager', 'Operations Team'],
+  '/operations/tickets': ['CEO', 'Head Manager', 'Operations Team'],
   '/data-scraper': ['CEO', 'Admin', 'Head Manager', 'Team Manager', 'Data Scraper']
 };
 

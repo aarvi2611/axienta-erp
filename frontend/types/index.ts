@@ -174,3 +174,56 @@ export interface ClientDailyUpdate {
   createdAt?: any;
   updatedAt?: any;
 }
+
+export type TicketStatus = 'Open' | 'In Progress' | 'Awaiting Client' | 'Resolved' | 'Closed';
+export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+export type TicketCategory = 'Billing' | 'Service' | 'Review' | 'Call' | 'Other';
+
+export interface ClientTicket {
+  id: string;
+  clientId: string;
+  businessName?: string;
+  businessProfile?: string;
+  title: string;
+  description: string;
+  category: TicketCategory;
+  priority: TicketPriority;
+  status: TicketStatus;
+  raisedBy?: string;
+  assignedTo?: string;
+  createdBy?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface PaymentReminder {
+  id: string;
+  clientId: string;
+  title: string;
+  amount: number;
+  dueDate: string;
+  status: 'Upcoming' | 'Due Soon' | 'Overdue' | 'Paid';
+  invoiceNo?: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface ClientAsset {
+  clientId: string;
+  logoUrl?: string;
+  coverUrl?: string;
+  logoPath?: string;
+  coverPath?: string;
+  updatedBy?: string;
+  updatedAt?: any;
+}
+
+export interface DailyUpdateNotification {
+  id: string;
+  clientId: string;
+  updateDate: string;
+  updatedBy?: string;
+  updatedAt?: any;
+}
