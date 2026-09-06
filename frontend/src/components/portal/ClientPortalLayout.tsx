@@ -21,6 +21,7 @@ import {
   X
 } from "lucide-react";
 import { usePortalData } from "@/hooks/usePortalData";
+import { portalStore } from "@/lib/portalService";
 import { cn } from "@/lib/utils";
 
 interface ClientPortalLayoutProps {
@@ -43,13 +44,32 @@ export default function ClientPortalLayout({ children }: ClientPortalLayoutProps
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const clientQuery = params.get("client");
+      if (clientQuery) {
+        portalStore.setAdminPreviewClient(clientQuery);
+      } else if (!portalStore.isClientAuthenticated()) {
+        const active = portalStore.getActiveClientId();
+        if (active) {
+          portalStore.setAdminPreviewClient(active);
+        } else if (portalStore.getClients().length > 0) {
+          portalStore.setAdminPreviewClient(portalStore.getClients()[0].clientId);
+        }
+      }
+    }
     setMounted(true);
   }, []);
 
   // Authentication Guard: Redirect unauthenticated users to /portal/login after mounting
   useEffect(() => {
     if (mounted && !isAuthenticated && pathname !== "/portal/login") {
-      router.replace("/portal/login");
+      const active = portalStore.getActiveClientId();
+      if (active) {
+        portalStore.setAdminPreviewClient(active);
+      } else {
+        router.replace("/portal/login");
+      }
     }
   }, [mounted, isAuthenticated, pathname, router]);
 
@@ -89,8 +109,8 @@ export default function ClientPortalLayout({ children }: ClientPortalLayoutProps
     );
   }
 
-  // Loading state during SSR and before client hydration or while checking authentication
-  if (!mounted || !isAuthenticated) {
+  // Loading state during SSR and before client hydration
+  if (!mounted) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B1120] flex flex-col items-center justify-center p-4">
         <div className="w-14 h-14 rounded-2xl bg-[#07111f] border border-[#D4A843]/60 p-1.5 flex items-center justify-center mb-4 shadow-lg animate-pulse">

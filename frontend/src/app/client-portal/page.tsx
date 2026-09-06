@@ -481,8 +481,8 @@ export default function AdminClientPortalManagerPage() {
               + Add New Client
             </button>
             <Link
-              href="/portal"
-              onClick={() => setAdminPreviewClient(selectedClientId)}
+              href={`/portal?client=${selectedClientId || "AXN-CLI-01"}`}
+              onClick={() => setAdminPreviewClient(selectedClientId || "AXN-CLI-01")}
               target="_blank"
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#D4A843] to-[#E8C976] text-slate-950 font-bold text-xs shadow-md hover:brightness-105 flex items-center gap-1.5 transition-all"
             >
@@ -657,7 +657,8 @@ export default function AdminClientPortalManagerPage() {
               </div>
             </div>
             <Link
-              href="/portal/seo"
+              href={`/portal/seo?client=${selectedClientId || "AXN-CLI-01"}`}
+              onClick={() => setAdminPreviewClient(selectedClientId || "AXN-CLI-01")}
               target="_blank"
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold transition-colors"
             >
@@ -1565,7 +1566,7 @@ export default function AdminClientPortalManagerPage() {
                         <td className="px-5 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Link
-                              href="/portal"
+                              href={`/portal?client=${c.clientId}`}
                               onClick={() => setAdminPreviewClient(c.clientId)}
                               target="_blank"
                               className="px-2.5 py-1.5 rounded-lg bg-[#D4A843] text-slate-950 font-bold hover:bg-[#E5BE5E] transition-colors text-[11px] inline-flex items-center gap-1 shadow-sm"

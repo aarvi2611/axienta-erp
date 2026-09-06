@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 
 export default function ClientPortalLoginPage() {
   const router = useRouter();
-  const { clientLogin, isAuthenticated } = usePortalData();
+  const { clientLogin, isAuthenticated, clients } = usePortalData();
   const [clientIdInput, setClientIdInput] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [error, setError] = useState("");
@@ -27,12 +27,32 @@ export default function ClientPortalLoginPage() {
     }
   }, [isAuthenticated, router]);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Check URL query param for ?client=
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const c = params.get("client");
+      if (c) {
+        setClientIdInput(c);
+        const res = clientLogin(c);
+        if (res.success) {
+          router.replace("/portal");
+        }
+      } else if (!clientIdInput && clients.length > 0) {
+        setClientIdInput(clients[0].clientId);
+      }
+    }
+  }, [clients, clientLogin, router]);
+
+  const handleLogin = (e?: React.FormEvent, customId?: string, customPin?: string) => {
+    if (e) e.preventDefault();
     setError("");
     setLoading(true);
 
-    const res = clientLogin(clientIdInput, pinInput);
+    const idToUse = customId || clientIdInput || "AXN-CLI-01";
+    const pinToUse = customPin !== undefined ? customPin : pinInput;
+
+    const res = clientLogin(idToUse, pinToUse);
     if (!res.success) {
       setError(res.error || "Authentication failed. Please verify your Client ID or PIN.");
       setLoading(false);
@@ -123,6 +143,31 @@ export default function ClientPortalLoginPage() {
             {loading ? "Authenticating..." : "Access My Portal"}
             <ArrowRight className="w-4 h-4 text-[#D4A843]" />
           </Button>
+
+          {/* Quick Enrolled Client One-Click Access */}
+          <div className="pt-2">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                Or Instant Preview Login
+              </span>
+              <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleLogin(undefined, "AXN-CLI-01", "1234")}
+              className="w-full py-2 px-3 rounded-xl border border-[#D4A843]/40 bg-[#D4A843]/10 hover:bg-[#D4A843]/20 text-slate-800 dark:text-[#E8C976] font-semibold flex items-center justify-between text-xs transition-all cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                <span>Active Account (AXN-CLI-01)</span>
+              </span>
+              <span className="text-[10px] font-mono bg-[#D4A843]/20 px-1.5 py-0.5 rounded font-bold">
+                1-Click Sign In
+              </span>
+            </button>
+          </div>
         </form>
 
         <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 text-center">

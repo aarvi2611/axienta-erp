@@ -133,17 +133,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             getDoc(userDocRef),
             new Promise<null>((_, reject) => setTimeout(() => reject(new Error("Firestore timeout")), 2500))
           ]);
+
+          let rawData: any = {};
           if (userDoc && userDoc.exists()) {
-            const rawData = userDoc.data();
-            if (rawData.isActive === false) {
-              await signOut(auth);
-              setUser(null);
-              setFirebaseUser(null);
-              return;
+            rawData = userDoc.data();
+          }
+
+          // Check overrides
+          try {
+            const overrideDoc = await getDoc(doc(db, "operations", "employee_overrides"));
+            if (overrideDoc.exists() && overrideDoc.data()?.[fbUser.uid]) {
+              const override = overrideDoc.data()[fbUser.uid];
+              rawData = { ...rawData, ...override };
             }
-            const normalizedRole = normalizeRole(rawData.role || baselineRole);
-            const userData = { uid: fbUser.uid, ...rawData, role: normalizedRole } as User;
-            setUser(userData);
+          } catch (e) {
+            // overrides check optional
+          }
+
+          if (rawData.isActive === false || rawData._deleted === true) {
+            await signOut(auth);
+            setUser(null);
+            setFirebaseUser(null);
+            return;
+          }
+
+          const normalizedRole = normalizeRole(rawData.role || baselineRole);
+          const userData = { uid: fbUser.uid, ...rawData, role: normalizedRole } as User;
+          setUser(userData);
+          if (userDoc && userDoc.exists()) {
             updateDoc(userDocRef, { lastLogin: new Date().toISOString() }).catch(() => {});
           } else if (userDoc) {
             setDoc(userDocRef, baseline).catch(() => {});

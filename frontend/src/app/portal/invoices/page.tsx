@@ -41,7 +41,7 @@ export default function ClientInvoicesPage() {
 
   const handleOpenPayModal = (inv: ClientInvoice) => {
     setPayModalInvoice(inv);
-    setPayAmount(inv.dueAmount.toString());
+    setPayAmount(String(inv.dueAmount ?? inv.totalAmount ?? 0));
     setPayRef("");
     setPaymentSuccess(false);
   };

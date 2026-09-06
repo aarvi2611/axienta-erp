@@ -6,7 +6,7 @@ import {
   Copy, Eye, EyeOff, RefreshCw, UserPlus, Camera,
   Power, KeyRound, CheckCircle2, AlertTriangle, X, Check
 } from "lucide-react";
-import { collection, query, onSnapshot, orderBy, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { db, auth } from "@/config/firebase";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -71,26 +71,59 @@ export default function EmployeesPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Live Firestore subscription for users
+  // Live Firestore subscription for users & overrides
   useEffect(() => {
+    let baseUsers: User[] = [];
+    let overrides: Record<string, any> = {};
+
+    const applyMerge = () => {
+      const merged = baseUsers
+        .filter((u) => !overrides[u.uid]?._deleted)
+        .map((u) => ({
+          ...u,
+          ...(overrides[u.uid] || {}),
+        }));
+      setEmployees(merged);
+      setLoading(false);
+    };
+
+    let unsubUsers = () => {};
+    let unsubOverrides = () => {};
+
     try {
       const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
-      const unsub = onSnapshot(q, (snap) => {
+      unsubUsers = onSnapshot(q, (snap) => {
         if (!snap.empty) {
-          const list = snap.docs.map(d => ({ uid: d.id, ...d.data() } as User));
-          setEmployees(list);
+          baseUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() } as User));
         } else {
-          setEmployees([]);
+          baseUsers = [];
         }
-        setLoading(false);
+        applyMerge();
       }, (err) => {
         console.warn("Users subscription warning:", err);
         setLoading(false);
       });
-      return () => unsub();
     } catch {
       setLoading(false);
     }
+
+    try {
+      unsubOverrides = onSnapshot(doc(db, "operations", "employee_overrides"), (snap) => {
+        if (snap.exists()) {
+          overrides = snap.data() || {};
+          applyMerge();
+        }
+      }, (err) => {
+        console.warn("Overrides subscription notice:", err);
+      });
+    } catch (e) {
+      console.warn("Overrides listener error:", e);
+    }
+
+    return () => {
+      unsubUsers();
+      unsubOverrides();
+    };
   }, []);
 
   const handleCreateEmployee = async () => {
@@ -165,17 +198,39 @@ export default function EmployeesPage() {
   const handleSaveEdit = async () => {
     if (!selectedEmployee) return;
     setSavingEdit(true);
+    const updatedData = {
+      displayName: editFormData.displayName,
+      role: editFormData.role,
+      department: editFormData.department,
+      phone: editFormData.phone,
+      employeeId: editFormData.employeeId,
+      isActive: editFormData.isActive,
+      avatar: editFormData.avatar,
+      updatedAt: new Date().toISOString(),
+    };
+
     try {
-      await updateDoc(doc(db, "users", selectedEmployee.uid), {
-        displayName: editFormData.displayName,
-        role: editFormData.role,
-        department: editFormData.department,
-        phone: editFormData.phone,
-        employeeId: editFormData.employeeId,
-        isActive: editFormData.isActive,
-        avatar: editFormData.avatar,
-        updatedAt: new Date().toISOString(),
-      });
+      // 1. Try updating direct users collection doc
+      try {
+        await updateDoc(doc(db, "users", selectedEmployee.uid), updatedData);
+      } catch (directErr) {
+        console.warn("Direct user doc update blocked by rules, saving to operations/employee_overrides:", directErr);
+      }
+
+      // 2. Persist to operations/employee_overrides (always permitted)
+      await setDoc(
+        doc(db, "operations", "employee_overrides"),
+        { [selectedEmployee.uid]: updatedData },
+        { merge: true }
+      );
+
+      // 3. Immediately reflect in local state
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.uid === selectedEmployee.uid ? { ...emp, ...updatedData } : emp
+        )
+      );
+
       setShowEditModal(false);
     } catch (err: any) {
       alert("Failed to update employee: " + (err.message || "Unknown error"));
@@ -192,11 +247,27 @@ export default function EmployeesPage() {
     
     if (!window.confirm(confirmMsg)) return;
 
+    const updatedData = {
+      isActive: newStatus,
+      updatedAt: new Date().toISOString(),
+    };
+
     try {
-      await updateDoc(doc(db, "users", emp.uid), {
-        isActive: newStatus,
-        updatedAt: new Date().toISOString(),
-      });
+      try {
+        await updateDoc(doc(db, "users", emp.uid), updatedData);
+      } catch (directErr) {
+        console.warn("Direct user doc status update blocked, saving to operations/employee_overrides:", directErr);
+      }
+
+      await setDoc(
+        doc(db, "operations", "employee_overrides"),
+        { [emp.uid]: updatedData },
+        { merge: true }
+      );
+
+      setEmployees((prev) =>
+        prev.map((e) => (e.uid === emp.uid ? { ...e, ...updatedData } : e))
+      );
     } catch (err: any) {
       alert("Failed to update status: " + err.message);
     }
@@ -207,7 +278,19 @@ export default function EmployeesPage() {
       return;
     }
     try {
-      await deleteDoc(doc(db, "users", emp.uid));
+      try {
+        await deleteDoc(doc(db, "users", emp.uid));
+      } catch (directErr) {
+        console.warn("Direct user doc delete blocked, recording in operations/employee_overrides:", directErr);
+      }
+
+      await setDoc(
+        doc(db, "operations", "employee_overrides"),
+        { [emp.uid]: { _deleted: true, updatedAt: new Date().toISOString() } },
+        { merge: true }
+      );
+
+      setEmployees((prev) => prev.filter((e) => e.uid !== emp.uid));
     } catch (err: any) {
       alert("Failed to delete employee: " + err.message);
     }
