@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Phone, PhoneCall, PhoneOff, PhoneMissed, Clock, MessageSquare,
@@ -19,14 +19,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Avatar } from "@/components/ui/avatar";
 import { CallLog } from "@/types";
 import { formatDateTime } from "@/lib/utils";
-
-const demoCallLogs: CallLog[] = [
-  { id: "1", leadId: "l1", leadName: "Tech Solutions Pvt Ltd", calledBy: "u1", calledByName: "Amit Kumar", duration: 320, status: "connected", response: "Interested in our services", notes: "Will call back next week", followUpDate: new Date(Date.now() + 604800000).toISOString(), createdAt: new Date().toISOString() },
-  { id: "2", leadId: "l2", leadName: "Global Marketing Agency", calledBy: "u1", calledByName: "Amit Kumar", duration: 0, status: "no_answer", response: "", notes: "Try again tomorrow", followUpDate: new Date(Date.now() + 86400000).toISOString(), createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: "3", leadId: "l3", leadName: "CloudNine Industries", calledBy: "u2", calledByName: "Sneha Gupta", duration: 180, status: "connected", response: "Requested pricing details", notes: "Send quotation email", followUpDate: new Date(Date.now() + 172800000).toISOString(), createdAt: new Date(Date.now() - 7200000).toISOString() },
-  { id: "4", leadId: "l4", leadName: "Digital Corp Solutions", calledBy: "u1", calledByName: "Amit Kumar", duration: 0, status: "busy", response: "", notes: "Line busy, retry later", createdAt: new Date(Date.now() - 10800000).toISOString() },
-  { id: "5", leadId: "l5", leadName: "StarBright Consulting", calledBy: "u2", calledByName: "Sneha Gupta", duration: 420, status: "callback", response: "Will discuss with team", notes: "Schedule callback for Thursday", followUpDate: new Date(Date.now() + 259200000).toISOString(), createdAt: new Date(Date.now() - 14400000).toISOString() },
-];
+import { collection, query, onSnapshot, orderBy, addDoc } from "firebase/firestore";
+import { db } from "@/config/firebase";
+import { useAuth } from "@/contexts/AuthContext";
 
 const whatsappTemplates = [
   { id: 1, name: "Introduction", message: "Hello! I'm calling from Axenta Business Consulting. We offer premium business solutions tailored to your needs. Would you be interested in learning more?" },
@@ -46,9 +41,63 @@ const statusBadge = (status: string) => {
 };
 
 export default function CallingPage() {
+  const { user } = useAuth();
   const [showLogModal, setShowLogModal] = useState(false);
   const [showWhatsApp, setShowWhatsApp] = useState(false);
-  const [callLogs, setCallLogs] = useState(demoCallLogs);
+  const [callLogs, setCallLogs] = useState<CallLog[]>([]);
+  const [leadName, setLeadName] = useState("");
+  const [callStatus, setCallStatus] = useState("connected");
+  const [duration, setDuration] = useState("0");
+  const [response, setResponse] = useState("");
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [savingLog, setSavingLog] = useState(false);
+
+  useEffect(() => {
+    try {
+      const q = query(collection(db, "call_logs"), orderBy("createdAt", "desc"));
+      const unsub = onSnapshot(q, (snap) => {
+        if (!snap.empty) {
+          setCallLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as CallLog)));
+        } else {
+          setCallLogs([]);
+        }
+      }, () => {
+        setCallLogs([]);
+      });
+      return () => unsub();
+    } catch {
+      setCallLogs([]);
+    }
+  }, []);
+
+  const handleSaveLog = async () => {
+    if (!leadName.trim()) return;
+    setSavingLog(true);
+    try {
+      await addDoc(collection(db, "call_logs"), {
+        leadName,
+        calledBy: user?.uid || "u1",
+        calledByName: user?.displayName || "Executive",
+        duration: parseInt(duration) || 0,
+        status: callStatus,
+        response,
+        notes,
+        followUpDate: followUpDate || "",
+        createdAt: new Date().toISOString(),
+      });
+      setLeadName("");
+      setDuration("0");
+      setResponse("");
+      setFollowUpDate("");
+      setNotes("");
+      setShowLogModal(false);
+    } catch (err) {
+      console.error("Save call log error:", err);
+    } finally {
+      setSavingLog(false);
+    }
+  };
 
   const stats = {
     total: callLogs.length,
@@ -153,11 +202,19 @@ export default function CallingPage() {
           <DialogHeader><DialogTitle>Log New Call</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Lead Name</label>
-              <Input placeholder="Search or enter lead name" />
+              <label className="text-sm font-medium">Lead / Client Name *</label>
+              <Input
+                placeholder="Search or enter lead name"
+                value={leadName}
+                onChange={(e) => setLeadName(e.target.value)}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Select label="Call Status">
+              <Select
+                label="Call Status"
+                value={callStatus}
+                onChange={(e) => setCallStatus(e.target.value)}
+              >
                 <option value="connected">Connected</option>
                 <option value="no_answer">No Answer</option>
                 <option value="busy">Busy</option>
@@ -166,25 +223,44 @@ export default function CallingPage() {
               </Select>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Duration (seconds)</label>
-                <Input type="number" placeholder="0" />
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Client Response</label>
-              <Textarea placeholder="What did the client say?" />
+              <Textarea
+                placeholder="What did the client say?"
+                value={response}
+                onChange={(e) => setResponse(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Follow-up Date</label>
-              <Input type="date" />
+              <Input
+                type="date"
+                value={followUpDate}
+                onChange={(e) => setFollowUpDate(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Notes</label>
-              <Textarea placeholder="Additional notes..." />
+              <Textarea
+                placeholder="Additional notes..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLogModal(false)}>Cancel</Button>
-            <Button onClick={() => setShowLogModal(false)}>Save Call Log</Button>
+            <Button onClick={handleSaveLog} disabled={!leadName.trim() || savingLog}>
+              {savingLog ? "Saving..." : "Save Call Log"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

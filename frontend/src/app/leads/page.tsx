@@ -24,63 +24,6 @@ import { Lead, LeadStatus, LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, ROLE_LABELS }
 import { formatDate, formatDateTime } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
-// Demo leads data
-const demoLeads: Lead[] = [
-  {
-    id: "1", businessName: "Tech Solutions Pvt Ltd", contactPerson: "Rajesh Kumar",
-    phone: "+91-9876543210", email: "rajesh@techsolutions.com", website: "www.techsolutions.com",
-    address: "Mumbai, Maharashtra", category: "IT Services", rating: 4.5,
-    status: "new", assignedTo: "", assignedToName: "", source: "Google Maps",
-    notes: [], tags: ["IT", "Enterprise"], followUpDate: "", createdBy: "admin",
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), timeline: []
-  },
-  {
-    id: "2", businessName: "Global Marketing Agency", contactPerson: "Priya Sharma",
-    phone: "+91-9876543211", email: "priya@globalmarketing.in", website: "www.globalmarketing.in",
-    address: "Delhi, NCR", category: "Marketing", rating: 4.2,
-    status: "contacted", assignedTo: "", assignedToName: "Amit Kumar", source: "Referral",
-    notes: [], tags: ["Marketing", "SMB"], followUpDate: new Date(Date.now() + 86400000).toISOString(),
-    createdBy: "admin", createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString(), timeline: []
-  },
-  {
-    id: "3", businessName: "CloudNine Industries", contactPerson: "Amit Patel",
-    phone: "+91-9876543212", email: "amit@cloudnine.co", website: "www.cloudnine.co",
-    address: "Bangalore, Karnataka", category: "Manufacturing", rating: 3.8,
-    status: "follow_up", assignedTo: "", assignedToName: "Sneha Gupta", source: "Website",
-    notes: [], tags: ["Manufacturing"], followUpDate: new Date(Date.now() + 172800000).toISOString(),
-    createdBy: "admin", createdAt: new Date(Date.now() - 172800000).toISOString(),
-    updatedAt: new Date().toISOString(), timeline: []
-  },
-  {
-    id: "4", businessName: "Digital Corp Solutions", contactPerson: "Neha Singh",
-    phone: "+91-9876543213", email: "neha@digitalcorp.com", website: "www.digitalcorp.com",
-    address: "Pune, Maharashtra", category: "Digital Services", rating: 4.7,
-    status: "interested", assignedTo: "", assignedToName: "Rahul Sharma", source: "Google Maps",
-    notes: [], tags: ["Digital", "Premium"], followUpDate: "",
-    createdBy: "admin", createdAt: new Date(Date.now() - 259200000).toISOString(),
-    updatedAt: new Date().toISOString(), timeline: []
-  },
-  {
-    id: "5", businessName: "StarBright Consulting", contactPerson: "Vikram Joshi",
-    phone: "+91-9876543214", email: "vikram@starbright.in", website: "",
-    address: "Hyderabad, Telangana", category: "Consulting", rating: 4.0,
-    status: "confirmed", assignedTo: "", assignedToName: "Priya Patel", source: "Cold Call",
-    notes: [], tags: ["Consulting"], followUpDate: "",
-    createdBy: "admin", createdAt: new Date(Date.now() - 604800000).toISOString(),
-    updatedAt: new Date().toISOString(), timeline: []
-  },
-  {
-    id: "6", businessName: "FreshStart Retail", contactPerson: "Meena Reddy",
-    phone: "+91-9876543215", email: "meena@freshstart.com", website: "www.freshstart.com",
-    address: "Chennai, Tamil Nadu", category: "Retail", rating: 3.5,
-    status: "converted", assignedTo: "", assignedToName: "Amit Kumar", source: "Referral",
-    notes: [], tags: ["Retail", "B2C"], followUpDate: "",
-    createdBy: "admin", createdAt: new Date(Date.now() - 1209600000).toISOString(),
-    updatedAt: new Date().toISOString(), timeline: []
-  },
-];
-
 const statusBadgeVariant = (status: LeadStatus) => {
   switch (status) {
     case "new": return "info";
@@ -96,7 +39,7 @@ const statusBadgeVariant = (status: LeadStatus) => {
 
 export default function LeadsPage() {
   const { user, hasPermission } = useAuth();
-  const [leads, setLeads] = useState<Lead[]>(demoLeads);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -107,7 +50,7 @@ export default function LeadsPage() {
     source: "", tags: "",
   });
 
-  // Try to load from Firestore
+  // Load from Firestore
   useEffect(() => {
     try {
       const q = query(collection(db, "leads"), orderBy("createdAt", "desc"));
@@ -115,13 +58,15 @@ export default function LeadsPage() {
         if (!snap.empty) {
           const firestoreLeads = snap.docs.map(d => ({ id: d.id, ...d.data() } as Lead));
           setLeads(firestoreLeads);
+        } else {
+          setLeads([]);
         }
       }, () => {
-        // If firestore fails, use demo data
+        setLeads([]);
       });
       return () => unsub();
     } catch {
-      // Use demo data
+      setLeads([]);
     }
   }, []);
 

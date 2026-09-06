@@ -18,7 +18,9 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user) router.push("/dashboard");
+    if (user) {
+      router.replace("/dashboard");
+    }
   }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,12 +29,14 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (err: any) {
       if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        setError("Invalid email or password. Please try again.");
+        setError("Invalid email or password. Please check your credentials.");
+      } else if (err.code === "auth/too-many-requests") {
+        setError("Too many failed attempts. Please wait a moment or reset your password.");
       } else {
-        setError(err.message || "Login failed. Please try again.");
+        setError(err.message || "Login failed. Please check your credentials.");
       }
     } finally {
       setLoading(false);
@@ -56,8 +60,8 @@ export default function LoginPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#D4A843] to-[#E8C976] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-[#D4A843]/30">
-              <Shield className="w-12 h-12 text-white" />
+            <div className="w-24 h-24 rounded-3xl bg-[#07111f] border border-[#D4A843]/60 p-2.5 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-[#D4A843]/20">
+              <img src="/axienta-logo-transparent.png" alt="Axienta logo" className="h-full w-full object-contain" />
             </div>
             <h1 className="text-4xl font-bold text-white mb-3">Axenta</h1>
             <p className="text-xl text-[#D4A843] font-medium mb-6">Business Consulting</p>
@@ -94,8 +98,8 @@ export default function LoginPage() {
         >
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0F2557] to-[#1A3A7A] flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <Shield className="w-8 h-8 text-[#D4A843]" />
+            <div className="w-16 h-16 rounded-2xl bg-[#07111f] border border-[#D4A843]/60 p-1.5 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#0F2557]/20">
+              <img src="/axienta-logo-transparent.png" alt="Axienta logo" className="h-full w-full object-contain" />
             </div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Axenta Business Consulting</h1>
           </div>
@@ -164,7 +168,7 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full h-12" disabled={loading}>
+              <Button type="submit" className="w-full h-12 bg-[#0F2557] hover:bg-[#1A3A7A] text-white font-bold" disabled={loading}>
                 {loading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -172,16 +176,21 @@ export default function LoginPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    Sign In <ArrowRight className="w-4 h-4" />
+                    Sign In to ERP Console <ArrowRight className="w-4 h-4" />
                   </div>
                 )}
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 text-center">
-              <p className="text-xs text-slate-400">
-                Accounts are created by administrators only.<br />
-                Contact your manager for access.
+            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 text-center space-y-2">
+              <Link
+                href="/portal/login"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F2557] dark:text-[#D4A843] hover:underline"
+              >
+                Are you a Client? Access Client Portal Hub ↗
+              </Link>
+              <p className="text-[11px] text-slate-400">
+                Staff accounts are managed by Axenta ERP administrators.
               </p>
             </div>
           </div>

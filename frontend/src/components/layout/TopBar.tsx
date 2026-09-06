@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, Bell, Moon, Sun, ChevronDown, User, Settings, LogOut
+  Search, Bell, Moon, Sun, ChevronDown, User, Settings, LogOut, Globe
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar } from "@/components/ui/avatar";
@@ -21,8 +21,16 @@ export default function TopBar() {
   return (
     <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-700">
       <div className="flex items-center justify-between h-16 px-4 lg:px-8">
-        {/* Left - Search */}
-        <div className="flex items-center gap-4 flex-1">
+        {/* Left - Search & Brand */}
+        <div className="flex items-center gap-3 sm:gap-4 flex-1">
+          {/* Mobile brand indicator */}
+          <Link href="/dashboard" className="lg:hidden flex items-center gap-2 mr-1 ml-9">
+            <div className="h-8 w-8 rounded-xl bg-[#07111f] border border-[#D4A843]/60 p-1 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <img src="/axienta-logo-transparent.png" alt="Axienta logo" className="h-full w-full object-contain" />
+            </div>
+            <span className="font-bold text-xs sm:text-sm text-[#0F2557] dark:text-white">Axenta</span>
+          </Link>
+
           <div className="hidden sm:flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-2 w-full max-w-md transition-all duration-200 focus-within:ring-2 focus-within:ring-[#0F2557]">
             <Search className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
             <input
@@ -43,6 +51,17 @@ export default function TopBar() {
 
         {/* Right - Actions */}
         <div className="flex items-center gap-2">
+          {/* Client Portal Quick Launcher */}
+          <Link
+            href="/portal"
+            target="_blank"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+            title="Open Live Client Portal in New Window"
+          >
+            <Globe className="w-3.5 h-3.5 text-[#D4A843]" />
+            <span>Client Portal ↗</span>
+          </Link>
+
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleDarkMode}
@@ -119,7 +138,7 @@ export default function TopBar() {
               <Avatar name={user?.displayName || "User"} size="sm" />
               <div className="hidden md:block text-left">
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{user?.displayName}</p>
-                <p className="text-[10px] text-slate-400">{user ? ROLE_LABELS[user.role] : ""}</p>
+                <p className="text-[10px] text-slate-400">{user ? (ROLE_LABELS[user.role] || user.role || "Executive") : ""}</p>
               </div>
               <ChevronDown className="w-4 h-4 text-slate-400 hidden md:block" />
             </button>
@@ -135,7 +154,7 @@ export default function TopBar() {
                   <div className="p-3 border-b border-slate-200 dark:border-slate-700">
                     <p className="font-medium dark:text-white">{user?.displayName}</p>
                     <p className="text-xs text-slate-400">{user?.email}</p>
-                    <Badge variant="gold" className="mt-1">{user ? ROLE_LABELS[user.role] : ""}</Badge>
+                    <Badge variant="gold" className="mt-1">{user ? (ROLE_LABELS[user.role] || user.role || "Executive") : ""}</Badge>
                   </div>
                   <div className="py-1">
                     <Link

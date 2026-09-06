@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -18,37 +18,101 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc } from "firebase/firestore";
+import { db } from "@/config/firebase";
 import { useAuth } from "@/contexts/AuthContext";
-import { LeaveRequest } from "@/types";
+import { LeaveRequest, User } from "@/types";
 import { formatDate } from "@/lib/utils";
 
-const demoLeaves: LeaveRequest[] = [
-  { id: "1", userId: "u1", userName: "Rahul Sharma", type: "casual", startDate: "2024-10-15", endDate: "2024-10-16", reason: "Family function", status: "pending", createdAt: new Date().toISOString() },
-  { id: "2", userId: "u2", userName: "Priya Patel", type: "sick", startDate: "2024-10-10", endDate: "2024-10-11", reason: "Not feeling well", status: "approved", approvedBy: "CEO", createdAt: new Date(Date.now() - 172800000).toISOString() },
-  { id: "3", userId: "u3", userName: "Amit Kumar", type: "earned", startDate: "2024-10-20", endDate: "2024-10-25", reason: "Vacation trip", status: "pending", createdAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: "4", userId: "u4", userName: "Sneha Gupta", type: "casual", startDate: "2024-10-05", endDate: "2024-10-05", reason: "Personal work", status: "rejected", createdAt: new Date(Date.now() - 604800000).toISOString() },
-];
-
-const salaryData = [
-  { id: "1", name: "Arjun Malhotra", role: "CEO", department: "Management", salary: 250000, status: "paid" },
-  { id: "2", name: "Sunita Verma", role: "Admin", department: "Administration", salary: 80000, status: "paid" },
-  { id: "3", name: "Rahul Sharma", role: "Team Manager", department: "Sales", salary: 65000, status: "paid" },
-  { id: "4", name: "Priya Patel", role: "Sales Executive", department: "Sales", salary: 45000, status: "pending" },
-  { id: "5", name: "Amit Kumar", role: "Calling Executive", department: "Calling", salary: 35000, status: "paid" },
-  { id: "6", name: "Sneha Gupta", role: "Data Scraper", department: "Data", salary: 40000, status: "pending" },
-  { id: "7", name: "Vikram Singh", role: "Operations", department: "Operations", salary: 50000, status: "paid" },
-  { id: "8", name: "Meena Reddy", role: "HR", department: "HR", salary: 55000, status: "paid" },
-];
-
 export default function HRPage() {
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState<"leaves" | "salary" | "employees">("leaves");
-  const [leaves, setLeaves] = useState(demoLeaves);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [employees, setEmployees] = useState<User[]>([]);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [leaveType, setLeaveType] = useState<"casual" | "sick" | "earned" | "unpaid">("casual");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleLeaveAction = (id: string, action: "approved" | "rejected") => {
-    setLeaves(prev => prev.map(l => l.id === id ? { ...l, status: action } : l));
+  useEffect(() => {
+    try {
+      const q = query(collection(db, "leaves"), orderBy("createdAt", "desc"));
+      const unsub = onSnapshot(q, (snap) => {
+        if (!snap.empty) {
+          setLeaves(snap.docs.map(d => ({ id: d.id, ...d.data() } as LeaveRequest)));
+        } else {
+          setLeaves([]);
+        }
+      }, () => {
+        setLeaves([]);
+      });
+      return () => unsub();
+    } catch {
+      setLeaves([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+      const unsub = onSnapshot(q, (snap) => {
+        if (!snap.empty) {
+          setEmployees(snap.docs.map(d => ({ uid: d.id, ...d.data() } as User)));
+        } else {
+          setEmployees([]);
+        }
+      }, () => {});
+      return () => unsub();
+    } catch {}
+  }, []);
+
+  const handleLeaveAction = async (id: string, action: "approved" | "rejected") => {
+    try {
+      await updateDoc(doc(db, "leaves", id), {
+        status: action,
+        approvedBy: user?.displayName || "HR Admin",
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Leave update error:", err);
+    }
   };
+
+  const handleCreateLeave = async () => {
+    if (!startDate || !endDate || !reason.trim()) return;
+    setSubmitting(true);
+    try {
+      await addDoc(collection(db, "leaves"), {
+        userId: user?.uid || "u1",
+        userName: user?.displayName || "Employee",
+        type: leaveType,
+        startDate,
+        endDate,
+        reason,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+      setStartDate("");
+      setEndDate("");
+      setReason("");
+      setShowLeaveModal(false);
+    } catch (err) {
+      console.error("Failed to request leave:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const salaryData = employees.map((emp) => ({
+    id: emp.uid,
+    name: emp.displayName,
+    role: emp.role,
+    department: emp.department || "General",
+    salary: emp.role === "ceo" ? 250000 : emp.role === "admin" ? 80000 : 50000,
+    status: emp.isActive ? "Active" : "On Hold",
+  }));
 
   const leaveColumns = [
     {
@@ -176,7 +240,11 @@ export default function HRPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Request Leave</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <Select label="Leave Type">
+            <Select
+              label="Leave Type"
+              value={leaveType}
+              onChange={(e) => setLeaveType(e.target.value as any)}
+            >
               <option value="casual">Casual Leave</option>
               <option value="sick">Sick Leave</option>
               <option value="earned">Earned Leave</option>
@@ -185,21 +253,35 @@ export default function HRPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Start Date</label>
-                <Input type="date" />
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">End Date</label>
-                <Input type="date" />
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Reason</label>
-              <Textarea placeholder="Reason for leave..." />
+              <Textarea
+                placeholder="Reason for leave..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLeaveModal(false)}>Cancel</Button>
-            <Button onClick={() => setShowLeaveModal(false)}>Submit Request</Button>
+            <Button onClick={handleCreateLeave} disabled={!startDate || !endDate || !reason.trim() || submitting}>
+              {submitting ? "Submitting..." : "Submit Request"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

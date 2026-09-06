@@ -24,7 +24,7 @@ export type Role =
   | "Operations Team"
   | "HR";
 
-export const ROLE_LABELS: Record<UserRole, string> = {
+export const ROLE_LABELS: Record<string, string> = {
   ceo: "CEO",
   admin: "Admin",
   head_manager: "Head Manager",
@@ -34,7 +34,39 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   data_scraper: "Data Scraper",
   operations: "Operations Team",
   hr: "HR",
+  // Aliases and title-case variants
+  CEO: "CEO",
+  Admin: "Admin",
+  "Head Manager": "Head Manager",
+  "Team Manager": "Team Manager",
+  "Sales Executive": "Sales Executive",
+  "Calling Executive": "Calling Executive",
+  "Data Scraper": "Data Scraper",
+  "Operations Team": "Operations Team",
+  HR: "HR",
+  Executive: "Executive",
+  executive: "Executive",
 };
+
+export function normalizeRole(role?: string | null): UserRole {
+  if (!role) return "ceo";
+  const r = role.toString().trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (r === "ceo" || r.includes("chief") || r.includes("founder") || r === "executive" || r === "exec") return "ceo";
+  if (r === "admin" || r === "administrator") return "admin";
+  if (r === "head_manager" || r === "headmanager") return "head_manager";
+  if (r === "team_manager" || r === "teammanager" || r === "manager") return "team_manager";
+  if (r === "sales_executive" || r === "sales" || r === "salesexecutive") return "sales_executive";
+  if (r === "calling_executive" || r === "calling" || r === "callingexecutive" || r === "telecaller") return "calling_executive";
+  if (r === "data_scraper" || r === "scraper" || r === "datascraper") return "data_scraper";
+  if (r === "operations" || r === "operations_team" || r === "operationsteam") return "operations";
+  if (r === "hr" || r === "human_resources") return "hr";
+  return "admin";
+}
+
+export function getRoleLabel(role?: string | null): string {
+  if (!role) return "Executive";
+  return ROLE_LABELS[role] || ROLE_LABELS[normalizeRole(role)] || role;
+}
 
 export interface User {
   uid: string;
@@ -227,6 +259,11 @@ export interface Attendance {
   status: "present" | "absent" | "half_day" | "leave";
   hoursWorked?: number;
   notes?: string;
+  photoUrl?: string;
+  verified?: boolean;
+  verificationScore?: number;
+  verificationMethod?: "biometric_webcam" | "manual_approval";
+  verifiedAt?: string;
 }
 
 export interface LeaveRequest {
@@ -376,43 +413,90 @@ export interface DailyUpdateNotification {
   updatedAt?: any;
 }
 
-export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ceo: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling", "hr",
-    "operations", "scraper", "profile", "create_users", "manage_roles",
+    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
+    "view_analytics", "approve_work", "assign_tasks", "manage_all", "letters"
+  ],
+  CEO: [
+    "dashboard", "leads", "crm", "tasks", "employees", "reports",
+    "attendance", "notifications", "settings", "calling", "hr",
+    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
+    "view_analytics", "approve_work", "assign_tasks", "manage_all", "letters"
+  ],
+  Executive: [
+    "dashboard", "leads", "crm", "tasks", "employees", "reports",
+    "attendance", "notifications", "settings", "calling", "hr",
+    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
     "view_analytics", "approve_work", "assign_tasks", "manage_all", "letters"
   ],
   admin: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling", "hr",
-    "operations", "scraper", "profile", "create_users", "manage_roles",
-    "view_analytics", "approve_work", "assign_tasks"
+    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
+    "view_analytics", "approve_work", "assign_tasks", "letters"
+  ],
+  Admin: [
+    "dashboard", "leads", "crm", "tasks", "employees", "reports",
+    "attendance", "notifications", "settings", "calling", "hr",
+    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
+    "view_analytics", "approve_work", "assign_tasks", "letters"
   ],
   head_manager: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling",
-    "operations", "scraper", "profile", "create_users",
+    "operations", "client_portal", "scraper", "profile", "create_users",
+    "view_analytics", "approve_work", "assign_tasks", "letters"
+  ],
+  "Head Manager": [
+    "dashboard", "leads", "crm", "tasks", "employees", "reports",
+    "attendance", "notifications", "settings", "calling",
+    "operations", "client_portal", "scraper", "profile", "create_users",
     "view_analytics", "approve_work", "assign_tasks", "letters"
   ],
   team_manager: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "notifications", "profile", "assign_tasks", "approve_work"
   ],
+  "Team Manager": [
+    "dashboard", "leads", "crm", "tasks", "employees", "reports",
+    "notifications", "profile", "assign_tasks", "approve_work"
+  ],
   sales_executive: [
+    "dashboard", "leads", "crm", "tasks", "notifications", "profile"
+  ],
+  "Sales Executive": [
     "dashboard", "leads", "crm", "tasks", "notifications", "profile"
   ],
   calling_executive: [
     "dashboard", "leads", "calling", "tasks", "notifications", "profile"
   ],
+  "Calling Executive": [
+    "dashboard", "leads", "calling", "tasks", "notifications", "profile"
+  ],
   data_scraper: [
     "dashboard", "scraper", "leads", "tasks", "notifications", "profile"
   ],
+  "Data Scraper": [
+    "dashboard", "scraper", "leads", "tasks", "notifications", "profile"
+  ],
   operations: [
-    "dashboard", "operations", "leads", "tasks", "notifications", "profile"
+    "dashboard", "operations", "client_portal", "leads", "tasks", "notifications", "profile"
+  ],
+  "Operations Team": [
+    "dashboard", "operations", "client_portal", "leads", "tasks", "notifications", "profile"
   ],
   hr: [
     "dashboard", "hr", "employees", "attendance", "tasks",
     "notifications", "reports", "profile", "letters"
   ],
+  HR: [
+    "dashboard", "hr", "employees", "attendance", "tasks",
+    "notifications", "reports", "profile", "letters"
+  ],
 };
+
+export * from './portal';
+

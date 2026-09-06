@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "@/config/firebase";
 
 interface ScrapedLead {
   id: string;
@@ -30,23 +32,13 @@ interface ScrapedLead {
   isValid: boolean;
 }
 
-const demoScrapedData: ScrapedLead[] = [
-  { id: "1", businessName: "Sharma & Associates", phone: "+91-9876540001", email: "info@sharma.com", website: "www.sharma.com", address: "Connaught Place, Delhi", category: "Legal Services", rating: 4.5, isDuplicate: false, isValid: true },
-  { id: "2", businessName: "Patel Electronics", phone: "+91-9876540002", email: "sales@patel.in", website: "www.patel.in", address: "MG Road, Bangalore", category: "Electronics", rating: 4.2, isDuplicate: false, isValid: true },
-  { id: "3", businessName: "Kumar Textiles", phone: "+91-9876540003", email: "info@kumartex.com", website: "", address: "Sector 17, Chandigarh", category: "Textiles", rating: 3.8, isDuplicate: true, isValid: true },
-  { id: "4", businessName: "Gupta Pharma", phone: "+91-9876540004", email: "", website: "www.guptapharma.com", address: "Banjara Hills, Hyderabad", category: "Pharma", rating: 4.0, isDuplicate: false, isValid: false },
-  { id: "5", businessName: "Singh Logistics", phone: "+91-9876540005", email: "contact@singhlog.com", website: "www.singhlog.com", address: "Andheri, Mumbai", category: "Logistics", rating: 4.3, isDuplicate: false, isValid: true },
-  { id: "6", businessName: "Reddy Construction", phone: "+91-9876540006", email: "reddy@construct.in", website: "", address: "Jubilee Hills, Hyderabad", category: "Construction", rating: 3.5, isDuplicate: false, isValid: true },
-  { id: "7", businessName: "Joshi IT Solutions", phone: "+91-9876540007", email: "joshi@itsol.com", website: "www.joshiit.com", address: "Koramangala, Bangalore", category: "IT", rating: 4.7, isDuplicate: true, isValid: true },
-  { id: "8", businessName: "Mehta Financial", phone: "+91-9876540008", email: "info@mehtafin.com", website: "www.mehtafin.com", address: "BKC, Mumbai", category: "Finance", rating: 4.1, isDuplicate: false, isValid: true },
-];
-
 export default function ScraperPage() {
-  const [data, setData] = useState<ScrapedLead[]>(demoScrapedData);
+  const [data, setData] = useState<ScrapedLead[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchCategory, setSearchCategory] = useState("");
   const [scraping, setScraping] = useState(false);
   const [scrapeProgress, setScrapeProgress] = useState(0);
+  const [exportingToCrm, setExportingToCrm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const totalLeads = data.length;
@@ -109,6 +101,36 @@ export default function ScraperPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Scraped Leads");
     XLSX.writeFile(wb, `Scraped_Leads_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const handlePushToCrm = async () => {
+    const validLeads = data.filter(d => d.isValid && !d.isDuplicate);
+    if (validLeads.length === 0) {
+      alert("No valid leads available to import into CRM.");
+      return;
+    }
+    setExportingToCrm(true);
+    try {
+      for (const lead of validLeads) {
+        await addDoc(collection(db, "leads"), {
+          businessName: lead.businessName,
+          contactPerson: lead.businessName,
+          phone: lead.phone,
+          email: lead.email || "",
+          category: lead.category || "Scraped Lead",
+          source: "Google Maps Scraper",
+          status: "new",
+          score: Math.round(lead.rating * 20),
+          notes: `Address: ${lead.address}, Website: ${lead.website || "N/A"}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      alert(`Successfully saved ${validLeads.length} leads directly to CRM!`);
+    } catch (err: any) {
+      alert("Error saving to CRM: " + err.message);
+    } finally {
+      setExportingToCrm(false);
+    }
   };
 
   const removeDuplicates = () => {
@@ -211,10 +233,18 @@ export default function ScraperPage() {
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-2 mb-4">
-        <Button variant="outline" size="sm" onClick={removeDuplicates}>
-          <Trash2 className="w-4 h-4 mr-1" /> Remove Duplicates ({duplicates})
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={removeDuplicates} disabled={duplicates === 0}>
+            <Trash2 className="w-4 h-4 mr-1" /> Remove Duplicates ({duplicates})
+          </Button>
+        </div>
+        {valid > 0 && (
+          <Button size="sm" className="bg-[#0F2557] hover:bg-[#1b3b82] text-white" onClick={handlePushToCrm} disabled={exportingToCrm}>
+            <CheckCircle className="w-4 h-4 mr-1 text-[#D4A843]" />
+            {exportingToCrm ? "Importing to CRM..." : `Send ${valid} Leads to CRM`}
+          </Button>
+        )}
       </div>
 
       <DataTable columns={columns} data={data} searchable searchKeys={["businessName", "phone", "category", "address"]} />

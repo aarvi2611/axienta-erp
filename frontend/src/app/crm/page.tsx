@@ -1,93 +1,84 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Briefcase, GripVertical, Phone, Mail, Calendar, ArrowRight } from "lucide-react";
+import { Briefcase, GripVertical, Phone, Mail, Calendar, ArrowRight, Sparkles } from "lucide-react";
+import { collection, query, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore";
+import { db } from "@/config/firebase";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, LeadStatus } from "@/types";
-
-interface PipelineLead {
-  id: string;
-  businessName: string;
-  contactPerson: string;
-  phone: string;
-  value: string;
-  followUp?: string;
-}
-
-const initialPipeline: Record<LeadStatus, PipelineLead[]> = {
-  new: [
-    { id: "1", businessName: "TechVista Solutions", contactPerson: "Raj Mehta", phone: "+91-98765-43210", value: "₹2.5L" },
-    { id: "2", businessName: "CloudPeak Inc", contactPerson: "Sita Ram", phone: "+91-98765-43211", value: "₹1.8L" },
-    { id: "3", businessName: "DataFlow Corp", contactPerson: "Anil Shah", phone: "+91-98765-43212", value: "₹3.2L" },
-  ],
-  contacted: [
-    { id: "4", businessName: "Global Marketing Hub", contactPerson: "Priya Sharma", phone: "+91-98765-43213", value: "₹4.0L", followUp: "Tomorrow" },
-    { id: "5", businessName: "InnoTech Labs", contactPerson: "Vikram Joshi", phone: "+91-98765-43214", value: "₹2.1L" },
-  ],
-  follow_up: [
-    { id: "6", businessName: "SmartBiz Analytics", contactPerson: "Neha Gupta", phone: "+91-98765-43215", value: "₹5.5L", followUp: "Today" },
-    { id: "7", businessName: "ProServe Consulting", contactPerson: "Amit Patel", phone: "+91-98765-43216", value: "₹1.5L", followUp: "In 2 days" },
-  ],
-  interested: [
-    { id: "8", businessName: "Digital Corp", contactPerson: "Sneha Reddy", phone: "+91-98765-43217", value: "₹8.0L" },
-  ],
-  confirmed: [
-    { id: "9", businessName: "EliteStar Group", contactPerson: "Rahul Kumar", phone: "+91-98765-43218", value: "₹12.0L" },
-  ],
-  converted: [
-    { id: "10", businessName: "NexGen Industries", contactPerson: "Meena Singh", phone: "+91-98765-43219", value: "₹6.5L" },
-  ],
-  rejected: [
-    { id: "11", businessName: "QuickFix Services", contactPerson: "Suresh Nair", phone: "+91-98765-43220", value: "₹1.0L" },
-  ],
-};
+import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, LeadStatus, Lead } from "@/types";
 
 const stageOrder: LeadStatus[] = ["new", "contacted", "follow_up", "interested", "confirmed", "converted", "rejected"];
 
 export default function CRMPage() {
-  const [pipeline, setPipeline] = useState(initialPipeline);
-  const [draggedItem, setDraggedItem] = useState<{ lead: PipelineLead; fromStage: LeadStatus } | null>(null);
+  const [leadsList, setLeadsList] = useState<Lead[]>([]);
+  const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
 
-  const handleDragStart = (lead: PipelineLead, stage: LeadStatus) => {
-    setDraggedItem({ lead, fromStage: stage });
+  useEffect(() => {
+    try {
+      const q = query(collection(db, "leads"), orderBy("createdAt", "desc"));
+      const unsub = onSnapshot(q, (snap) => {
+        if (!snap.empty) {
+          setLeadsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as Lead)));
+        } else {
+          setLeadsList([]);
+        }
+      }, () => {
+        setLeadsList([]);
+      });
+      return () => unsub();
+    } catch {
+      setLeadsList([]);
+    }
+  }, []);
+
+  const handleDragStart = (lead: Lead) => {
+    setDraggedLead(lead);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
-  const handleDrop = (toStage: LeadStatus) => {
-    if (!draggedItem || draggedItem.fromStage === toStage) return;
-    setPipeline(prev => {
-      const newPipeline = { ...prev };
-      newPipeline[draggedItem.fromStage] = prev[draggedItem.fromStage].filter(l => l.id !== draggedItem.lead.id);
-      newPipeline[toStage] = [...prev[toStage], draggedItem.lead];
-      return newPipeline;
-    });
-    setDraggedItem(null);
+  const handleDrop = async (toStage: LeadStatus) => {
+    if (!draggedLead || draggedLead.status === toStage) return;
+    const targetLeadId = draggedLead.id;
+    setDraggedLead(null);
+
+    // Optimistic local update
+    setLeadsList(prev => prev.map(l => l.id === targetLeadId ? { ...l, status: toStage } : l));
+
+    try {
+      await updateDoc(doc(db, "leads", targetLeadId), {
+        status: toStage,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Failed to update lead status:", err);
+    }
   };
 
-  const totalValue = Object.values(pipeline).flat().reduce((acc, lead) => {
-    const num = parseFloat(lead.value.replace("₹", "").replace("L", "")) || 0;
-    return acc + num;
-  }, 0);
+  const pipeline = stageOrder.reduce((acc, stage) => {
+    acc[stage] = leadsList.filter(l => l.status === stage);
+    return acc;
+  }, {} as Record<LeadStatus, Lead[]>);
+
+  const totalLeadsCount = leadsList.length;
 
   return (
     <DashboardLayout>
       <PageHeader
         title="CRM Pipeline"
-        description={`Track and manage leads through the sales pipeline • Total Value: ₹${totalValue.toFixed(1)}L`}
+        description={`Track and manage real leads through the active sales pipeline • ${totalLeadsCount} Total Leads`}
         icon={Briefcase}
       />
 
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-4 min-w-[1200px]">
           {stageOrder.map((stage, idx) => {
-            const leads = pipeline[stage];
-            const stageValue = leads.reduce((acc, l) => acc + (parseFloat(l.value.replace("₹", "").replace("L", "")) || 0), 0);
+            const leads = pipeline[stage] || [];
             return (
               <motion.div
                 key={stage}
@@ -99,12 +90,10 @@ export default function CRMPage() {
                 onDrop={() => handleDrop(stage)}
               >
                 {/* Column Header */}
-                <div className="rounded-t-xl p-3 text-white text-center" style={{ backgroundColor: LEAD_STATUS_COLORS[stage] }}>
+                <div className="rounded-t-xl p-3 text-white text-center shadow-xs" style={{ backgroundColor: LEAD_STATUS_COLORS[stage] }}>
                   <h3 className="font-semibold text-sm">{LEAD_STATUS_LABELS[stage]}</h3>
                   <div className="flex items-center justify-center gap-2 mt-1">
                     <span className="text-xs opacity-90">{leads.length} leads</span>
-                    <span className="text-xs opacity-70">•</span>
-                    <span className="text-xs opacity-90">₹{stageValue.toFixed(1)}L</span>
                   </div>
                 </div>
 
@@ -114,7 +103,7 @@ export default function CRMPage() {
                     <motion.div
                       key={lead.id}
                       draggable
-                      onDragStart={() => handleDragStart(lead, stage)}
+                      onDragStart={() => handleDragStart(lead)}
                       layout
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -126,18 +115,18 @@ export default function CRMPage() {
                           <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                             {lead.businessName}
                           </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{lead.contactPerson}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{lead.contactPerson || "Contact"}</p>
                           <div className="flex items-center gap-2 mt-2">
                             <span className="text-xs text-slate-400 flex items-center gap-1">
-                              <Phone className="w-3 h-3" /> {lead.phone.slice(-5)}
+                              <Phone className="w-3 h-3" /> {lead.phone || "No phone"}
                             </span>
                           </div>
                           <div className="flex items-center justify-between mt-2">
-                            <span className="text-xs font-bold text-[#D4A843]">{lead.value}</span>
-                            {lead.followUp && (
+                            <span className="text-xs font-bold text-[#D4A843]">{lead.category || "Direct Lead"}</span>
+                            {lead.followUpDate && (
                               <Badge variant="warning" className="text-[10px]">
                                 <Calendar className="w-2.5 h-2.5 mr-0.5" />
-                                {lead.followUp}
+                                {lead.followUpDate.slice(0, 10)}
                               </Badge>
                             )}
                           </div>

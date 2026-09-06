@@ -16,16 +16,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Notification } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 
-const demoNotifications: Notification[] = [
-  { id: "1", userId: "u1", title: "New Task Assigned", message: "Complete quarterly sales report by tomorrow", type: "task", isRead: false, link: "/tasks", createdAt: new Date().toISOString() },
-  { id: "2", userId: "u1", title: "Lead Assigned", message: 'You have been assigned "Tech Solutions Pvt Ltd"', type: "lead", isRead: false, link: "/leads", createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: "3", userId: "u1", title: "Follow-up Reminder", message: "Follow up with Digital Corp is due today", type: "reminder", isRead: false, link: "/leads", createdAt: new Date(Date.now() - 7200000).toISOString() },
-  { id: "4", userId: "u1", title: "Work Approved", message: "Your report has been approved by CEO", type: "approval", isRead: true, createdAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: "5", userId: "u1", title: "New Message", message: "Rahul Sharma sent you a message", type: "message", isRead: true, createdAt: new Date(Date.now() - 172800000).toISOString() },
-  { id: "6", userId: "u1", title: "Attendance Alert", message: "You haven't checked in today", type: "attendance", isRead: true, createdAt: new Date(Date.now() - 259200000).toISOString() },
-  { id: "7", userId: "u1", title: "System Update", message: "New features have been added to the CRM module", type: "system", isRead: true, createdAt: new Date(Date.now() - 604800000).toISOString() },
-];
-
 const typeIcons: Record<string, React.ElementType> = {
   task: CheckSquare,
   lead: Target,
@@ -48,10 +38,12 @@ const typeColors: Record<string, string> = {
 
 export default function NotificationsPage() {
   const { notifications: liveNotifs } = useAuth();
-  const [notifications, setNotifications] = useState(
-    liveNotifs.length > 0 ? liveNotifs : demoNotifications
-  );
+  const [notifications, setNotifications] = useState<Notification[]>(liveNotifs);
   const [filter, setFilter] = useState("all");
+
+  React.useEffect(() => {
+    setNotifications(liveNotifs);
+  }, [liveNotifs]);
 
   const filtered = filter === "all" ? notifications :
     filter === "unread" ? notifications.filter(n => !n.isRead) :

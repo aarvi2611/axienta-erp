@@ -23,45 +23,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Task, TaskStatus, TaskPriority, TASK_STATUS_LABELS, PRIORITY_COLORS } from "@/types";
 import { formatDate } from "@/lib/utils";
 
-const demoTasks: Task[] = [
-  {
-    id: "1", title: "Complete quarterly sales report", description: "Prepare Q3 2024 sales performance report with analytics and insights",
-    assignedTo: "user1", assignedToName: "Rahul Sharma", assignedBy: "admin", assignedByName: "CEO",
-    deadline: new Date(Date.now() + 86400000).toISOString(), priority: "high", status: "in_progress",
-    attachments: [], statusUpdates: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-  },
-  {
-    id: "2", title: "Client onboarding - Digital Corp", description: "Complete the onboarding process for Digital Corp including documentation and setup",
-    assignedTo: "user2", assignedToName: "Priya Patel", assignedBy: "admin", assignedByName: "Head Manager",
-    deadline: new Date(Date.now() + 172800000).toISOString(), priority: "urgent", status: "pending",
-    attachments: [], statusUpdates: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-  },
-  {
-    id: "3", title: "Follow up with 25 cold leads", description: "Call and follow up with the cold leads from the Google Maps scraping batch",
-    assignedTo: "user3", assignedToName: "Amit Kumar", assignedBy: "admin", assignedByName: "Team Manager",
-    deadline: new Date(Date.now() + 259200000).toISOString(), priority: "medium", status: "pending",
-    attachments: [], statusUpdates: [], createdAt: new Date(Date.now() - 86400000).toISOString(), updatedAt: new Date().toISOString()
-  },
-  {
-    id: "4", title: "Update CRM pipeline data", description: "Clean up and update the CRM pipeline with latest lead statuses",
-    assignedTo: "user4", assignedToName: "Sneha Gupta", assignedBy: "admin", assignedByName: "CEO",
-    deadline: new Date(Date.now() + 86400000).toISOString(), priority: "low", status: "completed",
-    attachments: [], statusUpdates: [], createdAt: new Date(Date.now() - 172800000).toISOString(), updatedAt: new Date().toISOString()
-  },
-  {
-    id: "5", title: "Prepare marketing presentation", description: "Design and prepare the marketing presentation for the new client pitch",
-    assignedTo: "user5", assignedToName: "Vikram Singh", assignedBy: "admin", assignedByName: "Head Manager",
-    deadline: new Date(Date.now() - 86400000).toISOString(), priority: "high", status: "in_progress",
-    attachments: [], statusUpdates: [], createdAt: new Date(Date.now() - 259200000).toISOString(), updatedAt: new Date().toISOString()
-  },
-  {
-    id: "6", title: "Review employee attendance", description: "Review and approve monthly attendance records for all departments",
-    assignedTo: "user6", assignedToName: "Meena Reddy", assignedBy: "admin", assignedByName: "HR",
-    deadline: new Date(Date.now() + 604800000).toISOString(), priority: "medium", status: "pending",
-    attachments: [], statusUpdates: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-  },
-];
-
 const priorityBadge = (priority: TaskPriority) => {
   switch (priority) {
     case "urgent": return "destructive";
@@ -81,14 +42,28 @@ const statusIcon = (status: TaskStatus) => {
   }
 };
 
+interface EmployeeOption {
+  uid: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+}
+
 export default function TasksPage() {
   const { user, hasPermission } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>(demoTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [formData, setFormData] = useState({
-    title: "", description: "", assignedToName: "",
-    deadline: "", priority: "medium" as TaskPriority,
+    title: "",
+    description: "",
+    assignedTo: "",
+    assignedToName: "",
+    assignedToRole: "",
+    deadline: "",
+    priority: "medium" as TaskPriority,
   });
 
   useEffect(() => {
@@ -97,10 +72,35 @@ export default function TasksPage() {
       const unsub = onSnapshot(q, (snap) => {
         if (!snap.empty) {
           setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as Task)));
+        } else {
+          setTasks([]);
         }
-      }, () => {});
-      return () => unsub();
-    } catch {}
+      }, () => {
+        setTasks([]);
+      });
+
+      const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
+        const emps: EmployeeOption[] = [];
+        snap.forEach((docSnap) => {
+          const d = docSnap.data();
+          emps.push({
+            uid: docSnap.id,
+            name: d.displayName || d.name || d.email || "Employee",
+            role: d.role || "Executive",
+            department: d.department || "General",
+            email: d.email || "",
+          });
+        });
+        setEmployees(emps);
+      });
+
+      return () => {
+        unsub();
+        unsubUsers();
+      };
+    } catch {
+      setTasks([]);
+    }
   }, []);
 
   const filteredTasks = statusFilter === "all" ? tasks : tasks.filter(t => t.status === statusFilter);
@@ -115,7 +115,9 @@ export default function TasksPage() {
   const handleAddTask = async () => {
     const newTask: any = {
       ...formData,
-      assignedTo: "",
+      assignedTo: formData.assignedTo,
+      assignedToName: formData.assignedToName || "Unassigned",
+      assignedToRole: formData.assignedToRole || "Team Member",
       assignedBy: user?.uid || "",
       assignedByName: user?.displayName || "Admin",
       status: "pending",
@@ -131,7 +133,15 @@ export default function TasksPage() {
       setTasks(prev => [newTask, ...prev]);
     }
     setShowAddModal(false);
-    setFormData({ title: "", description: "", assignedToName: "", deadline: "", priority: "medium" });
+    setFormData({
+      title: "",
+      description: "",
+      assignedTo: "",
+      assignedToName: "",
+      assignedToRole: "",
+      deadline: "",
+      priority: "medium",
+    });
   };
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
@@ -209,8 +219,15 @@ export default function TasksPage() {
 
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    <User className="w-3.5 h-3.5" />
-                    <span>Assigned to: <strong className="text-slate-700 dark:text-slate-200">{task.assignedToName}</strong></span>
+                    <User className="w-3.5 h-3.5 text-blue-500" />
+                    <span>
+                      Assigned to: <strong className="text-slate-700 dark:text-slate-200">{task.assignedToName}</strong>
+                      {(task as any).assignedToRole && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 uppercase">
+                          {(task as any).assignedToRole}
+                        </span>
+                      )}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                     <Calendar className="w-3.5 h-3.5" />
@@ -265,10 +282,48 @@ export default function TasksPage() {
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
               <Textarea placeholder="Task description..." value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Assign To</label>
-                <Input placeholder="Employee name" value={formData.assignedToName} onChange={e => setFormData({ ...formData, assignedToName: e.target.value })} />
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Assign To (Employee & Role) *</label>
+                <select
+                  value={formData.assignedTo}
+                  onChange={(e) => {
+                    const selectedUid = e.target.value;
+                    const emp = employees.find((x) => x.uid === selectedUid);
+                    if (emp) {
+                      setFormData({
+                        ...formData,
+                        assignedTo: emp.uid,
+                        assignedToName: emp.name,
+                        assignedToRole: emp.role,
+                      });
+                    } else {
+                      setFormData({
+                        ...formData,
+                        assignedTo: "",
+                        assignedToName: "",
+                        assignedToRole: "",
+                      });
+                    }
+                  }}
+                  className="w-full h-10 px-3 py-2 border rounded-md text-xs bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0F2557]"
+                >
+                  <option value="">-- Select Employee & Role --</option>
+                  {employees.map((emp) => (
+                    <option key={emp.uid} value={emp.uid}>
+                      {emp.name} — [{emp.role.toUpperCase()}] ({emp.department})
+                    </option>
+                  ))}
+                </select>
+                {/* Optional manual override if employee not registered yet */}
+                {employees.length === 0 && (
+                  <Input
+                    placeholder="Or enter employee name manually"
+                    value={formData.assignedToName}
+                    onChange={(e) => setFormData({ ...formData, assignedToName: e.target.value, assignedToRole: "Staff" })}
+                    className="mt-1.5 text-xs"
+                  />
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Priority</label>

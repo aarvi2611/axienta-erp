@@ -174,7 +174,14 @@ export default function LettersPage() {
   };
 
   const handlePrint = () => {
+    document.body.classList.add("printing-letterhead");
+    const cleanup = () => {
+      document.body.classList.remove("printing-letterhead");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
     window.print();
+    setTimeout(cleanup, 1500);
   };
 
   const columns = [
@@ -330,7 +337,7 @@ export default function LettersPage() {
         </motion.div>
       </div>
 
-      <div className="print-only">
+      <div id="printable-letterhead" className="print-only">
         <LetterheadPreview form={form} typeLabel={selectedTypeLabel} />
       </div>
     </DashboardLayout>
@@ -343,8 +350,8 @@ function LetterheadPreview({ form, typeLabel }: { form: Omit<CompanyDocument, "i
       <header className="letter-header">
         <div className="flex items-start justify-between gap-8">
           <div className="flex items-center gap-4">
-            <div className="letter-logo">
-              <Building2 className="w-9 h-9" />
+            <div className="letter-logo overflow-hidden p-1.5 border border-[#D4A843]/40">
+              <img src="/axienta-logo-transparent.png" alt="Axienta" className="w-full h-full object-contain" />
             </div>
             <div>
               <h2>Axenta Business Consulting</h2>
@@ -358,9 +365,9 @@ function LetterheadPreview({ form, typeLabel }: { form: Omit<CompanyDocument, "i
           </div>
         </div>
         <div className="letter-contact">
-          <span><Phone className="w-3.5 h-3.5" /> +91-1234567890</span>
-          <span><Mail className="w-3.5 h-3.5" /> info@axenta.com</span>
-          <span><MapPin className="w-3.5 h-3.5" /> Business Tower, Mumbai, Maharashtra, India</span>
+          <span><Phone className="w-3.5 h-3.5" /> +91 8873773398</span>
+          <span><Mail className="w-3.5 h-3.5" /> Info@axientabusinessconsulting.in</span>
+          <span><MapPin className="w-3.5 h-3.5" /> 249, Belisarai Motihari 845401 bihar India</span>
         </div>
       </header>
 

@@ -63,15 +63,15 @@ export default function SettingsPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Company Email</label>
-                    <Input value="info@axenta.com" />
+                    <Input value="Info@axientabusinessconsulting.in" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Company Phone</label>
-                    <Input value="+91-1234567890" />
+                    <Input value="+91 8873773398" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Address</label>
-                    <Input value="Business Tower, Mumbai, Maharashtra, India" />
+                    <Input value="249, Belisarai Motihari 845401 bihar India" />
                   </div>
                   <Button><Save className="w-4 h-4 mr-1" /> Save Changes</Button>
                 </CardContent>
