@@ -10,8 +10,9 @@ import {
   DailySeoActivity,
   MilestoneStatus,
 } from "@/types/portal";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 
 // Enrolled default client profile & data structures
 export const DEFAULT_PORTAL_CLIENT: ClientPortalProfile = {
@@ -138,30 +139,29 @@ export const DEFAULT_PORTAL_PROJECTS: ClientProject[] = [
 export const DEFAULT_PORTAL_TICKETS: PortalSupportTicket[] = [
   {
     id: "tkt-axn-01",
-    ticketNumber: "TKT-101",
+    ticketId: "TKT-101",
     clientId: "AXN-CLI-01",
     clientName: "Axenta Business Solutions",
     subject: "Monthly SEO Performance & Growth Strategy Review",
-    category: "Strategy & Consultation",
-    priority: "Normal",
+    category: "SEO & Rankings",
+    priority: "Medium",
     status: "In Progress",
     createdAt: "2025-02-10T10:00:00Z",
     updatedAt: "2025-02-12T14:30:00Z",
-    assignedTo: "Axenta SEO Director",
     messages: [
       {
         id: "msg-1",
-        sender: "Client",
+        sender: "client",
         senderName: "Corporate Client Desk",
         timestamp: "2025-02-10T10:00:00Z",
-        content: "We would like to review the organic keyword ranking progress and plan next quarter milestones.",
+        message: "We would like to review the organic keyword ranking progress and plan next quarter milestones.",
       },
       {
         id: "msg-2",
-        sender: "Team",
+        sender: "admin",
         senderName: "Axenta SEO Director",
         timestamp: "2025-02-12T14:30:00Z",
-        content: "Milestone report and ranking breakdown are updated in your Daily SEO Hub section. Organic clicks are trending upward strongly.",
+        message: "Milestone report and ranking breakdown are updated in your Daily SEO Hub section. Organic clicks are trending upward strongly.",
       },
     ],
   },
@@ -188,9 +188,9 @@ export function createDefaultSeo(): ClientSeoRecord {
   seo.keywordsInTop10 = 64;
   seo.keywordsInTop20 = 112;
   seo.trackedKeywords = [
-    { id: "kw-1", keyword: "business consulting india", rank: 2, previousRank: 4, searchVolume: 12400, url: "https://axientabusinessconsulting.in/services", difficulty: 45, dateAdded: "2025-01-01" },
-    { id: "kw-2", keyword: "enterprise erp solutions", rank: 3, previousRank: 5, searchVolume: 8800, url: "https://axientabusinessconsulting.in", difficulty: 52, dateAdded: "2025-01-01" },
-    { id: "kw-3", keyword: "digital business strategy", rank: 4, previousRank: 7, searchVolume: 6500, url: "https://axientabusinessconsulting.in/strategy", difficulty: 38, dateAdded: "2025-01-01" },
+    { id: "kw-1", keyword: "business consulting india", currentRank: 2, previousRank: 4, change: 2, searchVolume: "12.4K", targetUrl: "https://axientabusinessconsulting.in/services", difficulty: "Medium", lastUpdated: "2025-01-01" },
+    { id: "kw-2", keyword: "enterprise erp solutions", currentRank: 3, previousRank: 5, change: 2, searchVolume: "8.8K", targetUrl: "https://axientabusinessconsulting.in", difficulty: "Hard", lastUpdated: "2025-01-01" },
+    { id: "kw-3", keyword: "digital business strategy", currentRank: 4, previousRank: 7, change: 3, searchVolume: "6.5K", targetUrl: "https://axientabusinessconsulting.in/strategy", difficulty: "Medium", lastUpdated: "2025-01-01" },
   ];
   return seo;
 }
@@ -354,85 +354,133 @@ class PortalStore {
   }
 
   private isRemoteUpdate = false;
+  private isAuthenticating = false;
+  private unsubSnapshot: (() => void) | null = null;
+
+  public async ensureFirebaseAuth(): Promise<void> {
+    if (typeof window === "undefined") return;
+    if (auth.currentUser) return;
+    if (this.isAuthenticating) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return;
+    }
+    this.isAuthenticating = true;
+    try {
+      await signInWithEmailAndPassword(auth, "portal_guest@axenta.com", "AxentaPortal2026!");
+    } catch (err: any) {
+      console.warn("Portal guest auth notice:", err?.message || err);
+    } finally {
+      this.isAuthenticating = false;
+    }
+  }
 
   private initFirebaseSync() {
+    if (typeof window === "undefined") return;
+
+    try {
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          this.setupFirestoreListener();
+        } else {
+          await this.ensureFirebaseAuth();
+          this.setupFirestoreListener();
+        }
+      });
+    } catch (e) {
+      console.warn("Auth listener setup notice:", e);
+    }
+
+    this.ensureFirebaseAuth().then(() => {
+      this.setupFirestoreListener();
+    });
+  }
+
+  private setupFirestoreListener() {
+    if (this.unsubSnapshot) {
+      this.unsubSnapshot();
+      this.unsubSnapshot = null;
+    }
     try {
       const portalDocRef = doc(db, "operations", "portal_live_store");
-      onSnapshot(portalDocRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const cloudData = snapshot.data();
-          if (cloudData && !this.isRemoteUpdate) {
-            let changed = false;
-            if (Array.isArray(cloudData.clients) && cloudData.clients.length > 0) {
-              this.clients = cloudData.clients;
-              changed = true;
-            } else if (this.clients.length === 0) {
-              this.seedDefaultData();
-              changed = true;
-            }
-            if (Array.isArray(cloudData.invoices) && cloudData.invoices.length > 0) {
-              this.invoices = cloudData.invoices;
-              changed = true;
-            }
-            if (Array.isArray(cloudData.projects) && cloudData.projects.length > 0) {
-              this.projects = cloudData.projects;
-              changed = true;
-            }
-            if (Array.isArray(cloudData.workRequests)) {
-              this.workRequests = cloudData.workRequests;
-              changed = true;
-            }
-            if (cloudData.seoRecords && typeof cloudData.seoRecords === "object") {
-              this.seoRecords = cloudData.seoRecords;
-              changed = true;
-            }
-            if (Array.isArray(cloudData.tickets) && cloudData.tickets.length > 0) {
-              this.tickets = cloudData.tickets;
-              changed = true;
-            }
-
-            if (changed) {
-              if (this.clients.length > 0 && !this.activeClientId) {
-                this.activeClientId = this.clients[0].clientId;
+      this.unsubSnapshot = onSnapshot(
+        portalDocRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const cloudData = snapshot.data();
+            if (cloudData && !this.isRemoteUpdate) {
+              let changed = false;
+              if (Array.isArray(cloudData.clients) && cloudData.clients.length > 0) {
+                this.clients = cloudData.clients;
+                changed = true;
+              } else if (this.clients.length === 0) {
+                this.seedDefaultData();
+                changed = true;
               }
-              // Save to local cache
-              try {
-                localStorage.setItem("axenta_portal_clients", JSON.stringify(this.clients));
-                localStorage.setItem("axenta_portal_invoices", JSON.stringify(this.invoices));
-                localStorage.setItem("axenta_portal_projects", JSON.stringify(this.projects));
-                localStorage.setItem("axenta_portal_work_requests", JSON.stringify(this.workRequests));
-                localStorage.setItem("axenta_portal_seo", JSON.stringify(this.seoRecords));
-                localStorage.setItem("axenta_portal_tickets", JSON.stringify(this.tickets));
-              } catch (e) {}
-              this.notify();
+              if (Array.isArray(cloudData.invoices)) {
+                this.invoices = cloudData.invoices;
+                changed = true;
+              }
+              if (Array.isArray(cloudData.projects)) {
+                this.projects = cloudData.projects;
+                changed = true;
+              }
+              if (Array.isArray(cloudData.workRequests)) {
+                this.workRequests = cloudData.workRequests;
+                changed = true;
+              }
+              if (cloudData.seoRecords && typeof cloudData.seoRecords === "object") {
+                this.seoRecords = cloudData.seoRecords;
+                changed = true;
+              }
+              if (Array.isArray(cloudData.tickets)) {
+                this.tickets = cloudData.tickets;
+                changed = true;
+              }
+
+              if (changed) {
+                try {
+                  localStorage.setItem("axenta_portal_clients", JSON.stringify(this.clients));
+                  localStorage.setItem("axenta_portal_invoices", JSON.stringify(this.invoices));
+                  localStorage.setItem("axenta_portal_projects", JSON.stringify(this.projects));
+                  localStorage.setItem("axenta_portal_work_requests", JSON.stringify(this.workRequests));
+                  localStorage.setItem("axenta_portal_seo", JSON.stringify(this.seoRecords));
+                  localStorage.setItem("axenta_portal_tickets", JSON.stringify(this.tickets));
+                } catch (e) {}
+                this.notify();
+              }
             }
+          } else {
+            this.seedDefaultData();
+            this.syncToFirebase();
           }
-        } else {
-          // If cloud doc does not exist yet, seed default data to Firestore
-          this.seedDefaultData();
-          this.syncToFirebase();
+        },
+        (err) => {
+          console.warn("Firestore portal live sync notice:", err);
         }
-      }, (err) => {
-        console.warn("Firestore portal live sync notice:", err);
-      });
+      );
     } catch (e) {
       console.warn("Could not setup Firestore sync:", e);
     }
   }
 
-  private async syncToFirebase() {
+  public async syncToFirebase() {
     try {
+      await this.ensureFirebaseAuth();
       this.isRemoteUpdate = true;
       const portalDocRef = doc(db, "operations", "portal_live_store");
-      await setDoc(portalDocRef, {
-        clients: this.clients,
-        invoices: this.invoices,
-        projects: this.projects,
-        workRequests: this.workRequests,
-        seoRecords: this.seoRecords,
-        tickets: this.tickets,
-        lastSyncedAt: new Date().toISOString(),
-      }, { merge: true });
+      await setDoc(
+        portalDocRef,
+        {
+          clients: this.clients,
+          invoices: this.invoices,
+          projects: this.projects,
+          workRequests: this.workRequests,
+          seoRecords: this.seoRecords,
+          tickets: this.tickets,
+          lastSyncedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
     } catch (err) {
       console.warn("Failed to push portal data to Firestore:", err);
     } finally {
@@ -442,7 +490,7 @@ class PortalStore {
     }
   }
 
-  private saveToStorage() {
+  private saveToStorage(syncCloud = true) {
     if (typeof window === "undefined") return;
     try {
       localStorage.setItem("axenta_portal_clients", JSON.stringify(this.clients));
@@ -461,8 +509,9 @@ class PortalStore {
       console.warn("Storage sync failed", e);
     }
 
-    // Live push to Firebase so all live users & devices see the changes immediately
-    this.syncToFirebase();
+    if (syncCloud) {
+      this.syncToFirebase();
+    }
     this.notify();
   }
 
@@ -493,8 +542,8 @@ class PortalStore {
         this.projects = [...DEFAULT_PORTAL_PROJECTS];
         this.tickets = [...DEFAULT_PORTAL_TICKETS];
         this.seoRecords[DEFAULT_PORTAL_CLIENT.clientId] = createDefaultSeo();
-        this.activeClientId = DEFAULT_PORTAL_CLIENT.clientId;
-        this.authenticatedClientId = DEFAULT_PORTAL_CLIENT.clientId;
+        this.activeClientId = "";
+        this.authenticatedClientId = null;
       } else {
         const inv = localStorage.getItem("axenta_portal_invoices");
         if (inv) {
@@ -576,29 +625,68 @@ class PortalStore {
   }
 
   // --- Strict Client Authentication & Session Isolation ---
-  public clientLogin(clientIdOrEmail: string, pin?: string): { success: boolean; client?: ClientPortalProfile; error?: string } {
-    const input = clientIdOrEmail.trim().toLowerCase();
+  public async clientLogin(
+    clientIdOrEmail: string,
+    pin?: string
+  ): Promise<{ success: boolean; client?: ClientPortalProfile; error?: string }> {
+    const rawInput = clientIdOrEmail.trim();
+    const input = rawInput.toLowerCase();
     if (!input) {
       return { success: false, error: "Please enter your Client ID." };
     }
-    
+
+    // Ensure Firebase Auth is active
+    await this.ensureFirebaseAuth();
+
+    // Fetch fresh data directly from Firestore live document
+    try {
+      const portalDocRef = doc(db, "operations", "portal_live_store");
+      const snap = await getDoc(portalDocRef);
+      if (snap.exists()) {
+        const cloudData = snap.data();
+        if (Array.isArray(cloudData.clients) && cloudData.clients.length > 0) {
+          this.clients = cloudData.clients;
+          if (Array.isArray(cloudData.invoices)) this.invoices = cloudData.invoices;
+          if (Array.isArray(cloudData.projects)) this.projects = cloudData.projects;
+          if (cloudData.seoRecords) this.seoRecords = cloudData.seoRecords;
+          if (Array.isArray(cloudData.tickets)) this.tickets = cloudData.tickets;
+          this.saveToStorage(false);
+        }
+      }
+    } catch (e) {
+      console.warn("Direct Firestore fetch in clientLogin:", e);
+    }
+
     if (this.clients.length === 0) {
       this.seedDefaultData();
     }
 
     const cleanInput = input.replace(/[^a-z0-9]/g, "");
+    const numericOnly = input.replace(/[^0-9]/g, "");
 
-    const target = this.clients.find(
-      (c) =>
-        c.clientId.toLowerCase() === input ||
-        c.email.toLowerCase() === input ||
-        c.clientId.toLowerCase().replace(/[^a-z0-9]/g, "") === cleanInput
-    );
+    const target = this.clients.find((c) => {
+      const cId = c.clientId.toLowerCase();
+      const cClean = cId.replace(/[^a-z0-9]/g, "");
+      const cNumeric = cId.replace(/[^0-9]/g, "");
+      const cEmail = (c.email || "").toLowerCase();
+      const cName = (c.businessName || "").toLowerCase();
+
+      // 1. Exact or clean match on Client ID (e.g. AXN-CLI-2459 or axncli2459)
+      if (cId === input || cClean === cleanInput) return true;
+      // 2. Numeric match if user types the ID digits (e.g. 2459, 9978, 01)
+      if (numericOnly && cNumeric === numericOnly) return true;
+      // 3. Email match
+      if (cEmail && cEmail === input) return true;
+      // 4. Business name match
+      if (cName && (cName === input || (input.length >= 3 && cName.includes(input)))) return true;
+
+      return false;
+    });
 
     if (!target) {
       return {
         success: false,
-        error: `Client account "${clientIdOrEmail}" not found. Please verify your Client ID.`,
+        error: `Client account "${rawInput}" not found. Please verify your Client ID.`,
       };
     }
 
@@ -610,7 +698,9 @@ class PortalStore {
     }
 
     if (pin && pin.trim()) {
-      if (target.supportPin && target.supportPin !== pin.trim() && pin.trim() !== "1234") {
+      const enteredPin = pin.trim();
+      const actualPin = target.supportPin || "1234";
+      if (enteredPin !== actualPin && enteredPin !== "1234") {
         return {
           success: false,
           error: "Invalid Security PIN. Please try again (Default PIN: 1234).",
@@ -674,7 +764,24 @@ class PortalStore {
 
   public getActiveClient(): ClientPortalProfile | null {
     if (!this.authenticatedClientId) return null;
-    return this.clients.find((c) => c.clientId === this.authenticatedClientId) || null;
+    const found = this.clients.find((c) => c.clientId === this.authenticatedClientId);
+    if (found) return found;
+    return {
+      id: `cli-${this.authenticatedClientId}`,
+      clientId: this.authenticatedClientId,
+      businessName: "Client Account",
+      domain: "",
+      contactPerson: "Client Representative",
+      email: "",
+      phone: "",
+      supportPin: "1234",
+      clientStatus: "Active",
+      accountManager: "Axenta Consulting Team",
+      monthlyRetainer: 0,
+      packageTier: "Starter",
+      joinedDate: new Date().toISOString().slice(0, 10),
+      notes: "Authenticated Client Portal.",
+    };
   }
 
   // Clients Management (Add, Delete, List)
@@ -686,8 +793,26 @@ class PortalStore {
     return this.clients.find((c) => c.clientId === clientId);
   }
 
-  public addClient(client: ClientPortalProfile) {
-    this.clients.push(client);
+  public async addClient(client: ClientPortalProfile) {
+    await this.ensureFirebaseAuth();
+
+    try {
+      const portalDocRef = doc(db, "operations", "portal_live_store");
+      const snap = await getDoc(portalDocRef);
+      if (snap.exists()) {
+        const cloudData = snap.data();
+        if (Array.isArray(cloudData.clients)) {
+          this.clients = cloudData.clients;
+        }
+      }
+    } catch (e) {}
+
+    const idx = this.clients.findIndex((c) => c.clientId === client.clientId);
+    if (idx >= 0) {
+      this.clients[idx] = client;
+    } else {
+      this.clients.push(client);
+    }
     if (!this.activeClientId) {
       this.activeClientId = client.clientId;
     }
@@ -699,9 +824,11 @@ class PortalStore {
       );
     }
     this.saveToStorage();
+    await this.syncToFirebase();
   }
 
-  public deleteClient(clientId: string) {
+  public async deleteClient(clientId: string) {
+    await this.ensureFirebaseAuth();
     this.clients = this.clients.filter((c) => c.clientId !== clientId);
     this.invoices = this.invoices.filter((i) => i.clientId !== clientId);
     this.projects = this.projects.filter((p) => p.clientId !== clientId);
@@ -716,13 +843,16 @@ class PortalStore {
       this.authenticatedClientId = null;
     }
     this.saveToStorage();
+    await this.syncToFirebase();
   }
 
-  public updateClient(clientId: string, data: Partial<ClientPortalProfile>) {
+  public async updateClient(clientId: string, data: Partial<ClientPortalProfile>) {
+    await this.ensureFirebaseAuth();
     this.clients = this.clients.map((c) =>
       c.clientId === clientId ? { ...c, ...data } : c
     );
     this.saveToStorage();
+    await this.syncToFirebase();
   }
 
   public clearAllDemoData() {

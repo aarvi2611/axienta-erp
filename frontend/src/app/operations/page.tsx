@@ -170,7 +170,9 @@ export default function OperationsPage() {
     const unsubOps = onSnapshot(
       collection(db, "operations"),
       (snapshot) => {
-        opsItems = snapshot.docs.map((docSnap) => {
+        opsItems = snapshot.docs
+          .filter((docSnap) => docSnap.id !== "portal_live_store" && docSnap.id !== "employee_overrides")
+          .map((docSnap) => {
           const d = docSnap.data();
           const rawStatus = d.status || (d.progress === 100 ? "Completed" : "In Progress");
           return {

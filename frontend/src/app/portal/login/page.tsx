@@ -38,7 +38,7 @@ export default function ClientPortalLoginPage() {
     }
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -49,14 +49,18 @@ export default function ClientPortalLoginPage() {
     }
 
     setLoading(true);
-    const res = clientLogin(idToUse, pinInput.trim());
-    if (!res.success) {
-      setError(res.error || "Authentication failed. Please verify your Client ID or PIN.");
+    try {
+      const res = await clientLogin(idToUse, pinInput.trim());
+      if (!res.success) {
+        setError(res.error || "Authentication failed. Please verify your Client ID or PIN.");
+        setLoading(false);
+        return;
+      }
+      router.push("/portal");
+    } catch (err: any) {
+      setError(err?.message || "Authentication failed. Please try again.");
       setLoading(false);
-      return;
     }
-
-    router.push("/portal");
   };
 
   return (
@@ -142,9 +146,12 @@ export default function ClientPortalLoginPage() {
           </Button>
 
           {/* Assigned Client ID format hint */}
-          <div className="pt-2 text-center">
+          <div className="pt-2 text-center space-y-1">
             <p className="text-[11px] text-slate-400">
-              Format: <span className="font-mono font-bold text-slate-700 dark:text-slate-300">AXN-CLI-01</span> • PIN: <span className="font-mono text-slate-500">1234</span>
+              Enter your Client ID (e.g. <span className="font-mono font-bold text-slate-700 dark:text-slate-300">AXN-CLI-2459</span>, <span className="font-mono font-bold text-slate-700 dark:text-slate-300">AXN-CLI-9978</span>, or <span className="font-mono font-bold text-slate-700 dark:text-slate-300">AXN-CLI-01</span>) • PIN: <span className="font-mono text-slate-500 font-semibold">1234</span>
+            </p>
+            <p className="text-[10px] text-slate-400">
+              You can also log in using your registered Business Name or numeric ID.
             </p>
           </div>
         </form>

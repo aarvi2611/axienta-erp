@@ -117,7 +117,7 @@ export default function AdminClientPortalManagerPage() {
     setNewClientModalOpen(true);
   };
 
-  const handleCreateClient = (e: React.FormEvent) => {
+  const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBusinessName.trim() || !newClientId.trim()) return;
 
@@ -138,7 +138,7 @@ export default function AdminClientPortalManagerPage() {
       notes: newNotes.trim() || "Client portal initialized.",
     };
 
-    addClient(newProfile);
+    await addClient(newProfile);
     setSelectedClientId(newProfile.clientId);
     setClientSuccessNotice(true);
     setTimeout(() => {
