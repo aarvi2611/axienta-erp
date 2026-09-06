@@ -333,14 +333,8 @@ class PortalStore {
         this.authenticatedClientId = authClient;
         this.activeClientId = authClient;
       } else {
-        const savedClient = localStorage.getItem("axenta_portal_active_client");
-        if (savedClient) {
-          this.activeClientId = savedClient;
-          this.authenticatedClientId = savedClient;
-        } else if (this.clients.length > 0) {
-          this.activeClientId = this.clients[0].clientId;
-          this.authenticatedClientId = this.clients[0].clientId;
-        }
+        this.authenticatedClientId = null;
+        this.activeClientId = "";
       }
 
       // Initialize real-time cloud sync with Firebase
@@ -355,8 +349,6 @@ class PortalStore {
       this.projects = [...DEFAULT_PORTAL_PROJECTS];
       this.tickets = [...DEFAULT_PORTAL_TICKETS];
       this.seoRecords[DEFAULT_PORTAL_CLIENT.clientId] = createDefaultSeo();
-      this.activeClientId = DEFAULT_PORTAL_CLIENT.clientId;
-      this.authenticatedClientId = DEFAULT_PORTAL_CLIENT.clientId;
       this.saveToStorage();
     }
   }
@@ -586,6 +578,9 @@ class PortalStore {
   // --- Strict Client Authentication & Session Isolation ---
   public clientLogin(clientIdOrEmail: string, pin?: string): { success: boolean; client?: ClientPortalProfile; error?: string } {
     const input = clientIdOrEmail.trim().toLowerCase();
+    if (!input) {
+      return { success: false, error: "Please enter your Client ID." };
+    }
     
     if (this.clients.length === 0) {
       this.seedDefaultData();
@@ -593,39 +588,18 @@ class PortalStore {
 
     const cleanInput = input.replace(/[^a-z0-9]/g, "");
 
-    let target = this.clients.find(
+    const target = this.clients.find(
       (c) =>
         c.clientId.toLowerCase() === input ||
         c.email.toLowerCase() === input ||
-        c.businessName.toLowerCase() === input ||
         c.clientId.toLowerCase().replace(/[^a-z0-9]/g, "") === cleanInput
     );
 
-    // If input references 01, axn, cli, or axenta and no match found, map to default client
-    if (!target && (cleanInput.includes("01") || cleanInput.includes("axn") || cleanInput.includes("cli") || input.includes("axenta"))) {
-      target = this.clients[0] || DEFAULT_PORTAL_CLIENT;
-    }
-
-    // If still not found, auto-enroll this client so user is never locked out
     if (!target) {
-      const autoId = input.toUpperCase().startsWith("AXN-") ? input.toUpperCase() : `AXN-${input.toUpperCase().replace(/[^A-Z0-9]/g, "-")}`;
-      target = {
-        id: `cli-${Date.now()}`,
-        clientId: autoId,
-        businessName: clientIdOrEmail.trim(),
-        domain: "clientportal.domain",
-        contactPerson: "Client Representative",
-        email: clientIdOrEmail.includes("@") ? clientIdOrEmail.trim() : `${autoId.toLowerCase()}@clientportal.com`,
-        phone: "+91 98765 00000",
-        supportPin: pin?.trim() || "1234",
-        clientStatus: "Active",
-        accountManager: "Axenta Operations Team",
-        monthlyRetainer: 50000,
-        packageTier: "Enterprise",
-        joinedDate: new Date().toISOString().slice(0, 10),
-        notes: "Client portal auto-enrolled.",
+      return {
+        success: false,
+        error: `Client account "${clientIdOrEmail}" not found. Please verify your Client ID.`,
       };
-      this.addClient(target);
     }
 
     if (target.clientStatus === "Suspended") {
@@ -667,13 +641,12 @@ class PortalStore {
   }
 
   public isClientAuthenticated(): boolean {
-    return Boolean(this.authenticatedClientId || this.activeClientId);
+    return Boolean(this.authenticatedClientId);
   }
 
   public getAuthenticatedClient(): ClientPortalProfile | null {
-    const currentId = this.authenticatedClientId || this.activeClientId;
-    if (!currentId) return this.clients[0] || DEFAULT_PORTAL_CLIENT;
-    return this.clients.find((c) => c.clientId === currentId) || this.clients[0] || DEFAULT_PORTAL_CLIENT;
+    if (!this.authenticatedClientId) return null;
+    return this.clients.find((c) => c.clientId === this.authenticatedClientId) || null;
   }
 
   public setAdminPreviewClient(clientId: string) {
@@ -688,7 +661,7 @@ class PortalStore {
 
   // Active Client in Portal (Scoped)
   public getActiveClientId(): string {
-    return this.authenticatedClientId || this.activeClientId || (this.clients[0]?.clientId ?? "AXN-CLI-01");
+    return this.authenticatedClientId || "";
   }
 
   public setActiveClientId(clientId: string) {
@@ -699,13 +672,9 @@ class PortalStore {
     this.notify();
   }
 
-  public getActiveClient(): ClientPortalProfile {
-    const currentId = this.authenticatedClientId || this.activeClientId;
-    return (
-      this.clients.find((c) => c.clientId === currentId) ||
-      this.clients[0] ||
-      DEFAULT_PORTAL_CLIENT
-    );
+  public getActiveClient(): ClientPortalProfile | null {
+    if (!this.authenticatedClientId) return null;
+    return this.clients.find((c) => c.clientId === this.authenticatedClientId) || null;
   }
 
   // Clients Management (Add, Delete, List)
