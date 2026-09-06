@@ -10,6 +10,8 @@ import {
   DailySeoActivity,
   MilestoneStatus,
 } from "@/types/portal";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Clean initial baseline (no hardcoded demo clients)
 const INITIAL_CLIENTS: ClientPortalProfile[] = [];
@@ -153,6 +155,96 @@ class PortalStore {
         const savedClient = localStorage.getItem("axenta_portal_active_client");
         if (savedClient) this.activeClientId = savedClient;
       }
+
+      // Initialize real-time cloud sync with Firebase
+      this.initFirebaseSync();
+    }
+  }
+
+  private isRemoteUpdate = false;
+
+  private initFirebaseSync() {
+    try {
+      const portalDocRef = doc(db, "operations", "portal_live_store");
+      onSnapshot(portalDocRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const cloudData = snapshot.data();
+          if (cloudData && !this.isRemoteUpdate) {
+            let changed = false;
+            if (Array.isArray(cloudData.clients)) {
+              this.clients = cloudData.clients;
+              changed = true;
+            }
+            if (Array.isArray(cloudData.invoices)) {
+              this.invoices = cloudData.invoices;
+              changed = true;
+            }
+            if (Array.isArray(cloudData.projects)) {
+              this.projects = cloudData.projects;
+              changed = true;
+            }
+            if (Array.isArray(cloudData.workRequests)) {
+              this.workRequests = cloudData.workRequests;
+              changed = true;
+            }
+            if (cloudData.seoRecords && typeof cloudData.seoRecords === "object") {
+              this.seoRecords = cloudData.seoRecords;
+              changed = true;
+            }
+            if (Array.isArray(cloudData.tickets)) {
+              this.tickets = cloudData.tickets;
+              changed = true;
+            }
+
+            if (changed) {
+              if (this.clients.length > 0 && !this.activeClientId) {
+                this.activeClientId = this.clients[0].clientId;
+              }
+              // Save to local cache
+              try {
+                localStorage.setItem("axenta_portal_clients", JSON.stringify(this.clients));
+                localStorage.setItem("axenta_portal_invoices", JSON.stringify(this.invoices));
+                localStorage.setItem("axenta_portal_projects", JSON.stringify(this.projects));
+                localStorage.setItem("axenta_portal_work_requests", JSON.stringify(this.workRequests));
+                localStorage.setItem("axenta_portal_seo", JSON.stringify(this.seoRecords));
+                localStorage.setItem("axenta_portal_tickets", JSON.stringify(this.tickets));
+              } catch (e) {}
+              this.notify();
+            }
+          }
+        } else {
+          // If cloud doc does not exist yet and we have local data, seed it to Firestore
+          if (this.clients.length > 0 || this.invoices.length > 0) {
+            this.syncToFirebase();
+          }
+        }
+      }, (err) => {
+        console.warn("Firestore portal live sync notice:", err);
+      });
+    } catch (e) {
+      console.warn("Could not setup Firestore sync:", e);
+    }
+  }
+
+  private async syncToFirebase() {
+    try {
+      this.isRemoteUpdate = true;
+      const portalDocRef = doc(db, "operations", "portal_live_store");
+      await setDoc(portalDocRef, {
+        clients: this.clients,
+        invoices: this.invoices,
+        projects: this.projects,
+        workRequests: this.workRequests,
+        seoRecords: this.seoRecords,
+        tickets: this.tickets,
+        lastSyncedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (err) {
+      console.warn("Failed to push portal data to Firestore:", err);
+    } finally {
+      setTimeout(() => {
+        this.isRemoteUpdate = false;
+      }, 500);
     }
   }
 
@@ -174,6 +266,9 @@ class PortalStore {
     } catch (e) {
       console.warn("Storage sync failed", e);
     }
+
+    // Live push to Firebase so all live users & devices see the changes immediately
+    this.syncToFirebase();
     this.notify();
   }
 

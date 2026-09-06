@@ -1,7 +1,7 @@
 "use client";
 import { Attendance, User } from "@/types";
 import { db } from "@/config/firebase";
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 
 export function getTodayDateString(): string {
   const now = new Date();
@@ -213,6 +213,58 @@ export async function verifyBiometricPhoto(
  */
 class AttendanceStore {
   private listeners: Set<() => void> = new Set();
+  private remoteAttendance: Attendance[] = [];
+
+  constructor() {
+    if (typeof window !== "undefined") {
+      this.initFirestoreSync();
+    }
+  }
+
+  private initFirestoreSync() {
+    try {
+      const today = getTodayDateString();
+      const q = query(collection(db, "attendance"), where("date", "==", today));
+      onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const list: Attendance[] = snapshot.docs.map((docSnap) => {
+            const data = docSnap.data();
+            return {
+              id: docSnap.id,
+              userId: data.userId || docSnap.id,
+              userName: data.employeeName || data.userName || "Employee",
+              date: data.date || today,
+              checkIn: data.checkIn ? (data.checkIn.includes("T") ? data.checkIn.slice(11, 16) : data.checkIn) : undefined,
+              checkOut: data.checkOut ? (data.checkOut.includes("T") ? data.checkOut.slice(11, 16) : data.checkOut) : undefined,
+              status: (data.status?.toLowerCase() === "present" ? "present" : "absent") as any,
+              hoursWorked: Number(data.hoursWorked || 0),
+              photoUrl: data.checkInPhoto || data.photoUrl,
+              verified: data.verified !== undefined ? data.verified : true,
+              verificationScore: data.verificationScore || 92,
+              verificationMethod: data.verificationMethod || "biometric_webcam",
+              notes: data.notes || "",
+            };
+          });
+          this.remoteAttendance = list;
+
+          // Merge into local cache
+          try {
+            const allKey = `axenta_all_attendance_${today}`;
+            localStorage.setItem(allKey, JSON.stringify(list));
+            list.forEach((rec) => {
+              localStorage.setItem(this.getStorageKey(rec.userId, today), JSON.stringify(rec));
+            });
+          } catch (e) {}
+
+          this.notify();
+        }
+      }, (err) => {
+        console.warn("Live attendance listener notice:", err);
+      });
+    } catch (e) {
+      console.warn("Could not init attendance sync:", e);
+    }
+  }
 
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
