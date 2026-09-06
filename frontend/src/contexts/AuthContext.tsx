@@ -337,8 +337,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     await setDoc(doc(db, "users", cred.user.uid), userData);
 
-    // Re-sign in as the current admin user
-    // In production, this would be handled by Admin SDK
+    // Also sync to operations/portal_live_store in Firestore so this client/user can log into the client portal immediately
+    try {
+      const numPart = employeeId.replace(/[^0-9]/g, "");
+      const newProfiles = [
+        {
+          id: `cli-${cred.user.uid}`,
+          clientId: employeeId,
+          businessName: data.displayName || `Account (${employeeId})`,
+          domain: `${(data.displayName || "client").toLowerCase().replace(/[^a-z0-9]/g, "")}.portal`,
+          contactPerson: data.displayName || "Client Representative",
+          email: data.email,
+          phone: data.phone || "",
+          supportPin: "1234",
+          clientStatus: "Active" as const,
+          accountManager: "Axenta Operations Team",
+          monthlyRetainer: 50000,
+          packageTier: "Enterprise" as const,
+          joinedDate: new Date().toISOString().slice(0, 10),
+          notes: "Client account provisioned via ERP.",
+        },
+        {
+          id: `cli-${cred.user.uid}-cli`,
+          clientId: `AXN-CLI-${numPart}`,
+          businessName: data.displayName || `Account (AXN-CLI-${numPart})`,
+          domain: `${(data.displayName || "client").toLowerCase().replace(/[^a-z0-9]/g, "")}.portal`,
+          contactPerson: data.displayName || "Client Representative",
+          email: data.email,
+          phone: data.phone || "",
+          supportPin: "1234",
+          clientStatus: "Active" as const,
+          accountManager: "Axenta Operations Team",
+          monthlyRetainer: 50000,
+          packageTier: "Enterprise" as const,
+          joinedDate: new Date().toISOString().slice(0, 10),
+          notes: "Client account provisioned via ERP.",
+        },
+      ];
+
+      const portalDocRef = doc(db, "operations", "portal_live_store");
+      const snap = await getDoc(portalDocRef);
+      let existingClients: any[] = [];
+      if (snap.exists() && Array.isArray(snap.data().clients)) {
+        existingClients = snap.data().clients;
+      }
+      for (const p of newProfiles) {
+        const idx = existingClients.findIndex((c: any) => c.clientId === p.clientId);
+        if (idx >= 0) existingClients[idx] = p;
+        else existingClients.push(p);
+      }
+      await setDoc(portalDocRef, { clients: existingClients, lastSyncedAt: new Date().toISOString() }, { merge: true });
+    } catch (portalSyncErr) {
+      console.warn("Portal live sync during user creation notice:", portalSyncErr);
+    }
+
     return { email: data.email, password };
   };
 

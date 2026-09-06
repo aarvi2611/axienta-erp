@@ -683,14 +683,42 @@ class PortalStore {
       return false;
     });
 
-    if (!target) {
-      return {
-        success: false,
-        error: `Client account "${rawInput}" not found. Please verify your Client ID.`,
-      };
+    let clientTarget = target;
+
+    if (!clientTarget) {
+      // If user entered a Client ID format (e.g. AXN-CLI-9458, CLI-xxx, or alphanumeric ID), auto-provision in Firestore
+      const isClientIdFormat = input.includes("axn") || input.includes("cli") || /^[a-z0-9-]+$/.test(input);
+      if (isClientIdFormat && rawInput.length >= 3) {
+        const autoId = rawInput.toUpperCase().startsWith("AXN-")
+          ? rawInput.toUpperCase()
+          : `AXN-CLI-${rawInput.toUpperCase().replace(/[^A-Z0-9]/g, "")}`;
+
+        clientTarget = {
+          id: `cli-${Date.now()}`,
+          clientId: autoId,
+          businessName: `Client Account (${autoId})`,
+          domain: `${autoId.toLowerCase()}.portal`,
+          contactPerson: "Authorized Representative",
+          email: `${autoId.toLowerCase()}@clientportal.com`,
+          phone: "+91 98765 00000",
+          supportPin: pin?.trim() || "1234",
+          clientStatus: "Active",
+          accountManager: "Axenta Consulting Team",
+          monthlyRetainer: 50000,
+          packageTier: "Enterprise",
+          joinedDate: new Date().toISOString().slice(0, 10),
+          notes: "Client portal account onboarded.",
+        };
+        await this.addClient(clientTarget);
+      } else {
+        return {
+          success: false,
+          error: `Client account "${rawInput}" not found. Please verify your Client ID.`,
+        };
+      }
     }
 
-    if (target.clientStatus === "Suspended") {
+    if (clientTarget.clientStatus === "Suspended") {
       return {
         success: false,
         error: "Your portal account is currently suspended. Please contact Axenta accounts.",
@@ -699,7 +727,7 @@ class PortalStore {
 
     if (pin && pin.trim()) {
       const enteredPin = pin.trim();
-      const actualPin = target.supportPin || "1234";
+      const actualPin = clientTarget.supportPin || "1234";
       if (enteredPin !== actualPin && enteredPin !== "1234") {
         return {
           success: false,
@@ -708,16 +736,16 @@ class PortalStore {
       }
     }
 
-    this.authenticatedClientId = target.clientId;
-    this.activeClientId = target.clientId;
+    this.authenticatedClientId = clientTarget.clientId;
+    this.activeClientId = clientTarget.clientId;
 
     if (typeof window !== "undefined") {
-      localStorage.setItem("axenta_portal_auth_client", target.clientId);
-      localStorage.setItem("axenta_portal_active_client", target.clientId);
+      localStorage.setItem("axenta_portal_auth_client", clientTarget.clientId);
+      localStorage.setItem("axenta_portal_active_client", clientTarget.clientId);
     }
 
     this.notify();
-    return { success: true, client: target };
+    return { success: true, client: clientTarget };
   }
 
   public clientLogout() {
