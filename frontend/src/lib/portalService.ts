@@ -410,22 +410,28 @@ class PortalStore {
             if (cloudData && !this.isRemoteUpdate) {
               let changed = false;
               if (Array.isArray(cloudData.clients) && cloudData.clients.length > 0) {
-                this.clients = cloudData.clients;
+                this.clients = cloudData.clients.filter(
+                  (c: any) =>
+                    c.businessName !== "Tech Solutions Pvt Ltd" &&
+                    c.businessName !== "CloudNine Industries" &&
+                    c.businessName !== "Global Marketing Agency" &&
+                    c.businessName !== "Global Marketing Hub"
+                );
                 changed = true;
               } else if (this.clients.length === 0) {
                 this.seedDefaultData();
                 changed = true;
               }
               if (Array.isArray(cloudData.invoices)) {
-                this.invoices = cloudData.invoices;
+                this.invoices = cloudData.invoices.filter((i: any) => this.clients.some(c => c.clientId === i.clientId));
                 changed = true;
               }
               if (Array.isArray(cloudData.projects)) {
-                this.projects = cloudData.projects;
+                this.projects = cloudData.projects.filter((p: any) => this.clients.some(c => c.clientId === p.clientId));
                 changed = true;
               }
               if (Array.isArray(cloudData.workRequests)) {
-                this.workRequests = cloudData.workRequests;
+                this.workRequests = cloudData.workRequests.filter((w: any) => this.clients.some(c => c.clientId === w.clientId));
                 changed = true;
               }
               if (cloudData.seoRecords && typeof cloudData.seoRecords === "object") {
@@ -433,7 +439,7 @@ class PortalStore {
                 changed = true;
               }
               if (Array.isArray(cloudData.tickets)) {
-                this.tickets = cloudData.tickets;
+                this.tickets = cloudData.tickets.filter((t: any) => this.clients.some(c => c.clientId === t.clientId));
                 changed = true;
               }
 
@@ -645,11 +651,17 @@ class PortalStore {
       if (snap.exists()) {
         const cloudData = snap.data();
         if (Array.isArray(cloudData.clients) && cloudData.clients.length > 0) {
-          this.clients = cloudData.clients;
-          if (Array.isArray(cloudData.invoices)) this.invoices = cloudData.invoices;
-          if (Array.isArray(cloudData.projects)) this.projects = cloudData.projects;
+          this.clients = cloudData.clients.filter(
+            (c: any) =>
+              c.businessName !== "Tech Solutions Pvt Ltd" &&
+              c.businessName !== "CloudNine Industries" &&
+              c.businessName !== "Global Marketing Agency" &&
+              c.businessName !== "Global Marketing Hub"
+          );
+          if (Array.isArray(cloudData.invoices)) this.invoices = cloudData.invoices.filter((i: any) => this.clients.some(c => c.clientId === i.clientId));
+          if (Array.isArray(cloudData.projects)) this.projects = cloudData.projects.filter((p: any) => this.clients.some(c => c.clientId === p.clientId));
           if (cloudData.seoRecords) this.seoRecords = cloudData.seoRecords;
-          if (Array.isArray(cloudData.tickets)) this.tickets = cloudData.tickets;
+          if (Array.isArray(cloudData.tickets)) this.tickets = cloudData.tickets.filter((t: any) => this.clients.some(c => c.clientId === t.clientId));
           this.saveToStorage(false);
         }
       }
@@ -969,7 +981,7 @@ class PortalStore {
     await this.syncToFirebase();
   }
 
-  public clearAllDemoData() {
+  public async clearAllDemoData() {
     this.clients = [];
     this.invoices = [];
     this.projects = [];
@@ -988,6 +1000,28 @@ class PortalStore {
       localStorage.removeItem("axenta_portal_active_client");
       localStorage.removeItem("axenta_portal_auth_client");
     }
+    
+    // Completely replace Firestore document with empty data
+    try {
+      await this.ensureFirebaseAuth();
+      const portalDocRef = doc(db, "operations", "portal_live_store");
+      await setDoc(
+        portalDocRef,
+        {
+          clients: [],
+          invoices: [],
+          projects: [],
+          workRequests: [],
+          seoRecords: {},
+          tickets: [],
+          lastSyncedAt: new Date().toISOString(),
+        },
+        { merge: false }
+      );
+    } catch (e) {
+      console.warn("Failed to clear portal_live_store in Firestore:", e);
+    }
+
     this.notify();
   }
 
