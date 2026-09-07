@@ -385,6 +385,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const idx = existingClients.findIndex((c: any) => c.clientId === p.clientId);
         if (idx >= 0) existingClients[idx] = p;
         else existingClients.push(p);
+
+        try {
+          await setDoc(doc(db, "operations", `portal_client_${p.clientId}`), {
+            ...p,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        } catch (directWriteErr) {
+          console.warn("Direct write portal client error:", directWriteErr);
+        }
       }
       await setDoc(portalDocRef, { clients: existingClients, lastSyncedAt: new Date().toISOString() }, { merge: true });
     } catch (portalSyncErr) {

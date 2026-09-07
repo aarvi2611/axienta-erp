@@ -10,7 +10,7 @@ import {
   DailySeoActivity,
   MilestoneStatus,
 } from "@/types/portal";
-import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, getDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 
@@ -686,6 +686,36 @@ class PortalStore {
     let clientTarget = target;
 
     if (!clientTarget) {
+      // Check direct Firestore document operations/portal_client_* for exact ID match
+      try {
+        const directIdCandidates = [
+          rawInput.toUpperCase(),
+          rawInput.toUpperCase().startsWith("AXN-")
+            ? rawInput.toUpperCase()
+            : `AXN-CLI-${rawInput.toUpperCase().replace(/[^A-Z0-9]/g, "")}`,
+          `AXN-CLI-${rawInput.toUpperCase()}`,
+        ];
+        for (const cand of directIdCandidates) {
+          const directRef = doc(db, "operations", `portal_client_${cand}`);
+          const directSnap = await getDoc(directRef);
+          if (directSnap.exists()) {
+            const data = directSnap.data() as ClientPortalProfile;
+            if (data && data.clientId) {
+              clientTarget = data;
+              const idx = this.clients.findIndex((c) => c.clientId === data.clientId);
+              if (idx >= 0) this.clients[idx] = data;
+              else this.clients.push(data);
+              this.saveToStorage(false);
+              break;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Direct client lookup notice:", err);
+      }
+    }
+
+    if (!clientTarget) {
       // If user entered a Client ID format (e.g. AXN-CLI-9458, CLI-xxx, or alphanumeric ID), auto-provision in Firestore
       const isClientIdFormat = input.includes("axn") || input.includes("cli") || /^[a-z0-9-]+$/.test(input);
       if (isClientIdFormat && rawInput.length >= 3) {
@@ -824,35 +854,76 @@ class PortalStore {
   public async addClient(client: ClientPortalProfile) {
     await this.ensureFirebaseAuth();
 
+    const cleanClient: ClientPortalProfile = {
+      ...client,
+      clientId: client.clientId.trim().toUpperCase(),
+      supportPin: client.supportPin?.trim() || "1234",
+      clientStatus: client.clientStatus || "Active",
+    };
+
+    // 1. Direct write to operations/portal_client_${clientId} in Firestore
+    try {
+      const clientDocRef = doc(db, "operations", `portal_client_${cleanClient.clientId}`);
+      await setDoc(clientDocRef, {
+        ...cleanClient,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn("Direct write to portal_client doc error:", e);
+    }
+
+    // 2. Direct write initial SEO record to operations/portal_seo_${clientId} in Firestore
+    if (!this.seoRecords[cleanClient.clientId]) {
+      const initSeo = createInitialSeoRecord(
+        cleanClient.clientId,
+        cleanClient.domain,
+        cleanClient.businessName
+      );
+      this.seoRecords[cleanClient.clientId] = initSeo;
+      try {
+        const seoDocRef = doc(db, "operations", `portal_seo_${cleanClient.clientId}`);
+        await setDoc(seoDocRef, {
+          ...initSeo,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      } catch (e) {
+        console.warn("Direct write to portal_seo doc error:", e);
+      }
+    }
+
+    // 3. Refresh portal_live_store clients from cloud to prevent stomping concurrent entries
     try {
       const portalDocRef = doc(db, "operations", "portal_live_store");
       const snap = await getDoc(portalDocRef);
       if (snap.exists()) {
         const cloudData = snap.data();
         if (Array.isArray(cloudData.clients)) {
+          const idSet = new Set(cloudData.clients.map((c: any) => c.clientId));
+          this.clients.forEach((c) => {
+            if (!idSet.has(c.clientId)) {
+              cloudData.clients.push(c);
+            }
+          });
           this.clients = cloudData.clients;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Fetch live store notice:", e);
+    }
 
-    const idx = this.clients.findIndex((c) => c.clientId === client.clientId);
+    const idx = this.clients.findIndex((c) => c.clientId === cleanClient.clientId);
     if (idx >= 0) {
-      this.clients[idx] = client;
+      this.clients[idx] = cleanClient;
     } else {
-      this.clients.push(client);
+      this.clients.push(cleanClient);
     }
     if (!this.activeClientId) {
-      this.activeClientId = client.clientId;
+      this.activeClientId = cleanClient.clientId;
     }
-    if (!this.seoRecords[client.clientId]) {
-      this.seoRecords[client.clientId] = createInitialSeoRecord(
-        client.clientId,
-        client.domain,
-        client.businessName
-      );
-    }
-    this.saveToStorage();
+
+    this.saveToStorage(false);
     await this.syncToFirebase();
+    return cleanClient;
   }
 
   public async deleteClient(clientId: string) {
@@ -870,7 +941,15 @@ class PortalStore {
     if (this.authenticatedClientId === clientId) {
       this.authenticatedClientId = null;
     }
-    this.saveToStorage();
+
+    try {
+      await deleteDoc(doc(db, "operations", `portal_client_${clientId}`));
+      await deleteDoc(doc(db, "operations", `portal_seo_${clientId}`));
+    } catch (e) {
+      console.warn("Direct delete of portal docs notice:", e);
+    }
+
+    this.saveToStorage(false);
     await this.syncToFirebase();
   }
 
@@ -879,7 +958,14 @@ class PortalStore {
     this.clients = this.clients.map((c) =>
       c.clientId === clientId ? { ...c, ...data } : c
     );
-    this.saveToStorage();
+
+    try {
+      await setDoc(doc(db, "operations", `portal_client_${clientId}`), { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    } catch (e) {
+      console.warn("Direct update of portal client notice:", e);
+    }
+
+    this.saveToStorage(false);
     await this.syncToFirebase();
   }
 

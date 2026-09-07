@@ -88,6 +88,8 @@ export default function AdminClientPortalManagerPage() {
   const [newAccountManager, setNewAccountManager] = useState("Axenta Consulting Team");
   const [newNotes, setNewNotes] = useState("");
   const [clientSuccessNotice, setClientSuccessNotice] = useState(false);
+  const [isSavingClient, setIsSavingClient] = useState(false);
+  const [clientSaveError, setClientSaveError] = useState<string | null>(null);
 
   // Sync selectedClientId when clients list changes
   useEffect(() => {
@@ -114,6 +116,9 @@ export default function AdminClientPortalManagerPage() {
     setNewSupportPin("1234");
     setNewAccountManager("Axenta Consulting Team");
     setNewNotes("");
+    setClientSaveError(null);
+    setClientSuccessNotice(false);
+    setIsSavingClient(false);
     setNewClientModalOpen(true);
   };
 
@@ -121,30 +126,40 @@ export default function AdminClientPortalManagerPage() {
     e.preventDefault();
     if (!newBusinessName.trim() || !newClientId.trim()) return;
 
-    const newProfile: ClientPortalProfile = {
-      id: `cli-${Date.now()}`,
-      clientId: newClientId.trim().toUpperCase(),
-      businessName: newBusinessName.trim(),
-      domain: newDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, ""),
-      contactPerson: newContactPerson.trim(),
-      email: newEmail.trim(),
-      phone: newPhone.trim(),
-      supportPin: newSupportPin.trim() || "1234",
-      clientStatus: "Active",
-      accountManager: newAccountManager.trim(),
-      monthlyRetainer: Number(newMonthlyRetainer) || 0,
-      packageTier: newPackageTier,
-      joinedDate: new Date().toISOString().slice(0, 10),
-      notes: newNotes.trim() || "Client portal initialized.",
-    };
+    setIsSavingClient(true);
+    setClientSaveError(null);
 
-    await addClient(newProfile);
-    setSelectedClientId(newProfile.clientId);
-    setClientSuccessNotice(true);
-    setTimeout(() => {
-      setNewClientModalOpen(false);
-      setClientSuccessNotice(false);
-    }, 1000);
+    try {
+      const newProfile: ClientPortalProfile = {
+        id: `cli-${Date.now()}`,
+        clientId: newClientId.trim().toUpperCase(),
+        businessName: newBusinessName.trim(),
+        domain: newDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, ""),
+        contactPerson: newContactPerson.trim(),
+        email: newEmail.trim(),
+        phone: newPhone.trim(),
+        supportPin: newSupportPin.trim() || "1234",
+        clientStatus: "Active",
+        accountManager: newAccountManager.trim(),
+        monthlyRetainer: Number(newMonthlyRetainer) || 0,
+        packageTier: newPackageTier,
+        joinedDate: new Date().toISOString().slice(0, 10),
+        notes: newNotes.trim() || "Client portal initialized.",
+      };
+
+      await addClient(newProfile);
+      setSelectedClientId(newProfile.clientId);
+      setClientSuccessNotice(true);
+      setTimeout(() => {
+        setNewClientModalOpen(false);
+        setClientSuccessNotice(false);
+        setIsSavingClient(false);
+      }, 1500);
+    } catch (err: any) {
+      console.error("Failed to save client to Firebase:", err);
+      setClientSaveError(err?.message || "Failed to save client to Firebase. Please check your network and try again.");
+      setIsSavingClient(false);
+    }
   };
 
   const handleDeleteClient = (cId: string, bName: string) => {
@@ -1753,13 +1768,23 @@ export default function AdminClientPortalManagerPage() {
                 </button>
               </div>
 
+              {clientSaveError && (
+                <div className="p-3 mb-4 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{clientSaveError}</span>
+                </div>
+              )}
+
               {clientSuccessNotice ? (
-                <div className="py-8 text-center">
-                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2 animate-bounce" />
-                  <h4 className="font-bold text-base text-slate-900 dark:text-white">Client Successfully Added!</h4>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Client ID <span className="font-mono font-bold text-[#D4A843]">{newClientId}</span> is ready for portal access.
+                <div className="py-8 text-center space-y-3">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto animate-bounce" />
+                  <h4 className="font-bold text-base text-slate-900 dark:text-white">Client Successfully Saved to Firebase!</h4>
+                  <p className="text-xs text-slate-500">
+                    Client ID <span className="font-mono font-bold text-[#D4A843] text-sm">{newClientId}</span> is synced & ready for login.
                   </p>
+                  <div className="inline-block p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-mono text-xs">
+                    Security PIN: <strong>{newSupportPin || "1234"}</strong> | Direct Login: /portal/login
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleCreateClient} className="space-y-3.5 text-xs">
@@ -1918,16 +1943,25 @@ export default function AdminClientPortalManagerPage() {
                   <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <button
                       type="button"
+                      disabled={isSavingClient}
                       onClick={() => setNewClientModalOpen(false)}
-                      className="px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
+                      className="px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer disabled:opacity-50"
                     >
                       Cancel
                     </button>
                     <Button
                       type="submit"
-                      className="bg-[#0F2557] hover:bg-[#16367c] text-white font-bold px-5 py-2 rounded-xl"
+                      disabled={isSavingClient}
+                      className="bg-[#0F2557] hover:bg-[#16367c] text-white font-bold px-5 py-2 rounded-xl flex items-center gap-2 cursor-pointer disabled:opacity-60"
                     >
-                      Create & Onboard Client
+                      {isSavingClient ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Saving to Firebase...</span>
+                        </>
+                      ) : (
+                        <span>Create & Onboard Client</span>
+                      )}
                     </Button>
                   </div>
                 </form>
