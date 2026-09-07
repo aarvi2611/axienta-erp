@@ -509,7 +509,7 @@ export default function AdminClientPortalManagerPage() {
       />
 
       {/* Top Stats Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 lg:grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatsCard
           title="Active Portal Clients"
           value={clients.length}
@@ -681,7 +681,7 @@ export default function AdminClientPortalManagerPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Form 1: Publish Today's Daily SEO Work Feed */}
             <div className="corp-card p-6 lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -716,7 +716,7 @@ export default function AdminClientPortalManagerPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                       SEO Category
@@ -818,7 +818,7 @@ export default function AdminClientPortalManagerPage() {
                   <span className="font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider text-[10px] block">
                     📍 Google Business Profile (GBP / GMB)
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         GBP Views
@@ -871,7 +871,7 @@ export default function AdminClientPortalManagerPage() {
                   <span className="font-black text-blue-800 dark:text-blue-300 uppercase tracking-wider text-[10px] block">
                     📈 Traffic, Leads & Conversions
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Organic Traffic
@@ -947,7 +947,7 @@ export default function AdminClientPortalManagerPage() {
                   <span className="font-black text-indigo-800 dark:text-indigo-300 uppercase tracking-wider text-[10px] block">
                     🎯 Keywords Tracked & Rankings
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Total Keywords
@@ -1000,7 +1000,7 @@ export default function AdminClientPortalManagerPage() {
                   <span className="font-black text-purple-800 dark:text-purple-300 uppercase tracking-wider text-[10px] block">
                     🔗 Backlinks & Authority
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Total Backlinks
@@ -1055,7 +1055,7 @@ export default function AdminClientPortalManagerPage() {
                   <span className="font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider text-[10px] block">
                     ⚡ SEO Scores & Performance
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2">
                     <div>
                       <label className="font-bold text-indigo-700 dark:text-indigo-400 block mb-1">
                         SEO Score (/100)
@@ -1300,7 +1300,7 @@ export default function AdminClientPortalManagerPage() {
       {/* ========================================================================= */}
       {activeTab === "projects" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
             {/* Active Project Progress Control */}
             <div className="corp-card p-6 space-y-4">
               <h3 className="font-bold text-slate-900 dark:text-white text-base">
@@ -1404,7 +1404,7 @@ export default function AdminClientPortalManagerPage() {
       {/* TAB 4: SUPPORT TICKETS DESK */}
       {/* ========================================================================= */}
       {activeTab === "tickets" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Tickets List */}
           <div className="corp-card p-5 space-y-3">
             <h3 className="font-bold text-slate-900 dark:text-white text-base">
@@ -1638,7 +1638,7 @@ export default function AdminClientPortalManagerPage() {
               </div>
 
               <form onSubmit={handleSaveInvoice} className="space-y-3.5 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Invoice Number</label>
                     <input
@@ -1661,7 +1661,7 @@ export default function AdminClientPortalManagerPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Invoice Amount (₹)</label>
                     <input
@@ -1686,7 +1686,7 @@ export default function AdminClientPortalManagerPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Invoice Status</label>
                     <select
@@ -1788,7 +1788,7 @@ export default function AdminClientPortalManagerPage() {
                 </div>
               ) : (
                 <form onSubmit={handleCreateClient} className="space-y-3.5 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Business Name <span className="text-rose-500">*</span>
@@ -1818,7 +1818,7 @@ export default function AdminClientPortalManagerPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Website Domain
@@ -1845,7 +1845,7 @@ export default function AdminClientPortalManagerPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Contact Person
@@ -1872,7 +1872,7 @@ export default function AdminClientPortalManagerPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Phone Number
@@ -1899,7 +1899,7 @@ export default function AdminClientPortalManagerPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Service Package Tier

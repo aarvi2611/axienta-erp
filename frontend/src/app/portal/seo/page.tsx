@@ -244,7 +244,7 @@ export default function ClientSeoHubPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             {/* 1. Monthly Organic Traffic */}
             <div className="corp-card p-4 border-t-4 border-t-[#0F2557]">
               <div className="flex items-center justify-between">
@@ -453,7 +453,7 @@ export default function ClientSeoHubPage() {
           </div>
 
           {/* 5 Local GBP Metric Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="corp-card p-4 border-l-4 border-l-blue-500">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 GBP Profile Views
@@ -596,7 +596,7 @@ export default function ClientSeoHubPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Left: On-Page Optimization Breakdown */}
             <div className="corp-card p-5 lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -621,7 +621,7 @@ export default function ClientSeoHubPage() {
               </div>
 
               {/* Progress Bars */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 text-xs">
                 <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40">
                   <div className="flex justify-between font-semibold">
                     <span className="text-slate-600 dark:text-slate-300">Meta Titles & Descriptions</span>
@@ -766,7 +766,7 @@ export default function ClientSeoHubPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="corp-card p-4 border-t-4 border-t-purple-600">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Domain Authority (Moz)
@@ -901,7 +901,7 @@ export default function ClientSeoHubPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="corp-card p-4 border-t-4 border-t-cyan-500">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 pSEO Pages Created
@@ -1031,7 +1031,7 @@ export default function ClientSeoHubPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="corp-card p-4 border-l-4 border-l-emerald-500">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 HTTP 200 (Success)
@@ -1074,7 +1074,7 @@ export default function ClientSeoHubPage() {
           </div>
 
           {/* Technical Infrastructure Checklist */}
-          <div className="corp-card p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          <div className="corp-card p-5 grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 lg:grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-1">
               <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-semibold">
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
@@ -1122,7 +1122,7 @@ export default function ClientSeoHubPage() {
       {/* SECTION 7 & 8: TRACKED KEYWORDS TABLE & DAILY SEO WORK FEED */}
       {/* ========================================================================= */}
       {(activeTab === "all" || activeTab === "keywords" || activeTab === "daily_feed") && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Left Column: Daily SEO Activity Log (Posted by Axenta ERP Team) */}
           {(activeTab === "all" || activeTab === "daily_feed") && (
             <div className={`corp-card p-6 space-y-4 ${activeTab === "daily_feed" ? "lg:col-span-3" : "lg:col-span-1"}`}>
@@ -1221,7 +1221,7 @@ export default function ClientSeoHubPage() {
               </div>
 
               {/* 4 Keyword Metric Summary Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Keywords</span>
                   <span className="text-xl font-black text-slate-900 dark:text-white">
@@ -1384,7 +1384,7 @@ function SeoPrintableReport({ client, seoData }: { client: any; seoData: any }) 
       </header>
 
       {/* Client Overview Card */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
         <div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Client Business</span>
           <strong className="text-sm text-slate-900 font-bold">{client?.businessName || "Client Business"}</strong>
@@ -1409,7 +1409,7 @@ function SeoPrintableReport({ client, seoData }: { client: any; seoData: any }) 
       <h2 className="text-xs font-black uppercase tracking-wider text-[#0F2557] mb-2 border-l-4 border-[#D4A843] pl-2">
         Executive SEO Health & Performance Scorecard
       </h2>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6 text-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 sm:grid-cols-6 gap-2 mb-6 text-center">
         <div className="p-3 border border-slate-200 rounded-lg bg-emerald-50/50">
           <span className="text-[10px] text-slate-500 font-semibold block">Health Score</span>
           <span className="text-lg font-black text-emerald-700">{seoData?.healthScore || 0}%</span>
@@ -1468,7 +1468,7 @@ function SeoPrintableReport({ client, seoData }: { client: any; seoData: any }) 
       </table>
 
       {/* Local SEO & On-Page Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mb-6">
         <div className="border border-slate-200 rounded-xl p-3.5 bg-white">
           <h3 className="text-xs font-bold text-[#0F2557] uppercase mb-2">Google Maps & Local 3-Pack Presence</h3>
           <div className="space-y-1.5 text-xs">
