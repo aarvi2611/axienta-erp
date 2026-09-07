@@ -102,7 +102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
+      // Ignore the background portal guest used for public data syncing
+      if (fbUser && fbUser.email !== "portal_guest@axenta.com") {
         setFirebaseUser(fbUser);
         if (typeof window !== "undefined") {
           localStorage.removeItem("axenta_demo_user");
