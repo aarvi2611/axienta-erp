@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user && !auth.currentUser) {
+    if (!loading && !user) {
       router.replace("/login");
     }
   }, [user, loading, router]);
