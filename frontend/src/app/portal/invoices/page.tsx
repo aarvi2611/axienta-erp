@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 export default function ClientInvoicesPage() {
-  const { client, invoices, dues, recordPayment } = usePortalData();
+  const { client, invoices, dues, recordPayment, companySettings } = usePortalData();
   const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("all");
   const [selectedInvoice, setSelectedInvoice] = useState<ClientInvoice | null>(null);
   const [payModalInvoice, setPayModalInvoice] = useState<ClientInvoice | null>(null);
@@ -404,6 +404,26 @@ export default function ClientInvoicesPage() {
                     </div>
                   </div>
                 </div>
+
+                {companySettings && (
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-700 dark:text-slate-300">
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-2 uppercase tracking-wider">Payment Instructions</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><span className="text-slate-500">Bank:</span> <strong>{companySettings.bankName}</strong></div>
+                      <div><span className="text-slate-500">A/C Name:</span> <strong>{companySettings.accountName}</strong></div>
+                      <div><span className="text-slate-500">A/C Number:</span> <strong>{companySettings.accountNumber}</strong></div>
+                      <div><span className="text-slate-500">IFSC:</span> <strong>{companySettings.ifscCode}</strong></div>
+                      {companySettings.upiId && (
+                        <div className="col-span-2"><span className="text-slate-500">UPI ID:</span> <strong>{companySettings.upiId}</strong></div>
+                      )}
+                    </div>
+                    {companySettings.notes && (
+                      <p className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-700 italic text-slate-500">
+                        {companySettings.notes}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {selectedInvoice.notes && (
                   <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-[11px] text-slate-500">

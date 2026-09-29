@@ -9,6 +9,7 @@ import {
   TrackedKeyword,
   DailySeoActivity,
   MilestoneStatus,
+  CompanySettings,
 } from "@/types/portal";
 import { doc, setDoc, onSnapshot, getDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -324,6 +325,7 @@ class PortalStore {
   private workRequests: ClientWorkRequest[] = INITIAL_WORK_REQUESTS;
   private seoRecords: Record<string, ClientSeoRecord> = INITIAL_SEO_DATA;
   private tickets: PortalSupportTicket[] = INITIAL_TICKETS;
+  private companySettings: CompanySettings | null = null;
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -442,6 +444,10 @@ class PortalStore {
                 this.tickets = cloudData.tickets.filter((t: any) => this.clients.some(c => c.clientId === t.clientId));
                 changed = true;
               }
+              if (cloudData.companySettings) {
+                this.companySettings = cloudData.companySettings;
+                changed = true;
+              }
 
               if (changed) {
                 try {
@@ -483,6 +489,7 @@ class PortalStore {
           workRequests: this.workRequests,
           seoRecords: this.seoRecords,
           tickets: this.tickets,
+          companySettings: this.companySettings,
           lastSyncedAt: new Date().toISOString(),
         },
         { merge: true }
@@ -505,6 +512,7 @@ class PortalStore {
       localStorage.setItem("axenta_portal_work_requests", JSON.stringify(this.workRequests));
       localStorage.setItem("axenta_portal_seo", JSON.stringify(this.seoRecords));
       localStorage.setItem("axenta_portal_tickets", JSON.stringify(this.tickets));
+      if (this.companySettings) localStorage.setItem("axenta_portal_company_settings", JSON.stringify(this.companySettings));
       localStorage.setItem("axenta_portal_active_client", this.activeClientId);
       if (this.authenticatedClientId) {
         localStorage.setItem("axenta_portal_auth_client", this.authenticatedClientId);
@@ -608,6 +616,15 @@ class PortalStore {
           }
         } else {
           this.tickets = [...DEFAULT_PORTAL_TICKETS];
+        }
+
+        const cs = localStorage.getItem("axenta_portal_company_settings");
+        if (cs) {
+          try {
+            this.companySettings = JSON.parse(cs);
+          } catch {
+            this.companySettings = null;
+          }
         }
       }
 
@@ -1322,7 +1339,13 @@ class PortalStore {
     );
     this.saveToStorage();
   }
+
+  public getCompanySettings(): CompanySettings | null { return this.companySettings; }
+  public updateCompanySettings(settings: CompanySettings) { this.companySettings = settings; this.saveToStorage(); }
 }
 
 // Singleton Instance for Application Lifetime
 export const portalStore = new PortalStore();
+
+//   public getCompanySettings(): CompanySettings | null { return this.companySettings; }
+//   public updateCompanySettings(settings: CompanySettings) { this.companySettings = settings; this.saveToStorage(); }

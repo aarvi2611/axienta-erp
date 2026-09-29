@@ -307,3 +307,12 @@ export interface PortalSupportTicket {
   messages: PortalTicketMessage[];
 }
 
+
+export interface CompanySettings {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  ifscCode: string;
+  upiId?: string;
+  notes?: string;
+}

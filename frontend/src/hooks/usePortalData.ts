@@ -35,6 +35,7 @@ export function usePortalData(clientId?: string) {
   const seoData = portalStore.getSeoData(activeClientId);
   const tickets = portalStore.getTickets(activeClientId);
   const allTickets = portalStore.getTickets();
+  const companySettings = portalStore.getCompanySettings();
 
   const isAuthenticated = portalStore.isClientAuthenticated();
 
@@ -57,6 +58,8 @@ export function usePortalData(clientId?: string) {
     seoData,
     tickets,
     allTickets,
+    companySettings,
+    updateCompanySettings: portalStore.updateCompanySettings.bind(portalStore),
     setActiveClient: (id: string) => portalStore.setActiveClientId(id),
     createInvoice: portalStore.createInvoice.bind(portalStore),
     updateInvoice: portalStore.updateInvoice.bind(portalStore),

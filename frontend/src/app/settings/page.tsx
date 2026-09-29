@@ -13,10 +13,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_LABELS, ROLE_PERMISSIONS, UserRole } from "@/types";
+import { usePortalData } from "@/hooks/usePortalData";
 
 export default function SettingsPage() {
   const { user, hasPermission, darkMode, toggleDarkMode } = useAuth();
+  const { companySettings, updateCompanySettings } = usePortalData();
   const [activeSection, setActiveSection] = useState("general");
+  
+  const [bankSettings, setBankSettings] = useState({
+    bankName: companySettings?.bankName || "HDFC Bank Ltd.",
+    accountName: companySettings?.accountName || "Axenta Business Consulting",
+    accountNumber: companySettings?.accountNumber || "50200067891234",
+    ifscCode: companySettings?.ifscCode || "HDFC0001234",
+    upiId: companySettings?.upiId || "axenta@hdfcbank",
+    notes: companySettings?.notes || ""
+  });
+
+  React.useEffect(() => {
+    if (companySettings) {
+      setBankSettings({
+        bankName: companySettings.bankName,
+        accountName: companySettings.accountName,
+        accountNumber: companySettings.accountNumber,
+        ifscCode: companySettings.ifscCode,
+        upiId: companySettings.upiId || "",
+        notes: companySettings.notes || ""
+      });
+    }
+  }, [companySettings]);
+
+  const handleSaveBankDetails = () => {
+    updateCompanySettings(bankSettings);
+    alert("Bank details updated successfully!");
+  };
 
   const sections = [
     { key: "general", label: "General", icon: Settings },
@@ -74,6 +103,39 @@ export default function SettingsPage() {
                     <Input value="249, Belisarai Motihari 845401 bihar India" />
                   </div>
                   <Button><Save className="w-4 h-4 mr-1" /> Save Changes</Button>
+                </CardContent>
+              </Card>
+
+              <Card className="mt-6">
+                <CardHeader><CardTitle>Bank & Invoicing Details</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Bank Name</label>
+                      <Input value={bankSettings.bankName} onChange={(e) => setBankSettings({...bankSettings, bankName: e.target.value})} placeholder="e.g. HDFC Bank Ltd." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Account Name</label>
+                      <Input value={bankSettings.accountName} onChange={(e) => setBankSettings({...bankSettings, accountName: e.target.value})} placeholder="e.g. Axenta Business Consulting" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Account Number</label>
+                      <Input value={bankSettings.accountNumber} onChange={(e) => setBankSettings({...bankSettings, accountNumber: e.target.value})} placeholder="e.g. 50200012345678" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">IFSC Code</label>
+                      <Input value={bankSettings.ifscCode} onChange={(e) => setBankSettings({...bankSettings, ifscCode: e.target.value})} placeholder="e.g. HDFC0001234" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">UPI ID (Optional)</label>
+                      <Input value={bankSettings.upiId} onChange={(e) => setBankSettings({...bankSettings, upiId: e.target.value})} placeholder="e.g. axenta@upi" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Additional Invoice Notes</label>
+                    <Input value={bankSettings.notes} onChange={(e) => setBankSettings({...bankSettings, notes: e.target.value})} placeholder="Any notes to display at the bottom of the invoice" />
+                  </div>
+                  <Button onClick={handleSaveBankDetails} className="bg-emerald-600 hover:bg-emerald-700 text-white"><Save className="w-4 h-4 mr-1" /> Save Bank Details</Button>
                 </CardContent>
               </Card>
             </motion.div>
