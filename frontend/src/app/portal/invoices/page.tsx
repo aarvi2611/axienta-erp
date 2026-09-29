@@ -472,11 +472,19 @@ export default function ClientInvoicesPage() {
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 space-y-1">
                     <p className="text-slate-500">Invoice: <strong className="text-slate-900 dark:text-white">{payModalInvoice.invoiceNumber}</strong></p>
                     <p className="text-slate-500">Outstanding Balance: <strong className="text-red-500">₹{payModalInvoice.dueAmount.toLocaleString()}</strong></p>
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-500">
-                      <p className="font-semibold text-slate-700 dark:text-slate-300">Axenta Bank Details for NEFT/IMPS:</p>
-                      <p>Bank: HDFC Bank • Account: 50200084729103</p>
-                      <p>IFSC: HDFC0001042 • UPI ID: axenta.business@hdfcbank</p>
-                    </div>
+                    {companySettings ? (
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-500">
+                        <p className="font-semibold text-slate-700 dark:text-slate-300">Bank Details for NEFT/IMPS:</p>
+                        <p>Bank: {companySettings.bankName} • Account: {companySettings.accountNumber}</p>
+                        <p>IFSC: {companySettings.ifscCode}{companySettings.upiId ? ` • UPI ID: ${companySettings.upiId}` : ''}</p>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-500">
+                        <p className="font-semibold text-slate-700 dark:text-slate-300">Axenta Bank Details for NEFT/IMPS:</p>
+                        <p>Bank: HDFC Bank • Account: 50200084729103</p>
+                        <p>IFSC: HDFC0001042 • UPI ID: axenta.business@hdfcbank</p>
+                      </div>
+                    )}
                   </div>
 
                   <div>
