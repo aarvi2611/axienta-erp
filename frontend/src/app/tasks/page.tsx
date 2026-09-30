@@ -352,7 +352,7 @@ export default function TasksPage() {
                       {emp.name} â€” [{emp.role.toUpperCase()}] ({emp.department})
                     </option>
                   ))}
-                </Select></div>
+                </select>
                 {/* Optional manual override if employee not registered yet */}
                 {employees.length === 0 && (
                   <Input
@@ -370,7 +370,7 @@ export default function TasksPage() {
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
                   <option value="urgent">Urgent</option>
-                </Select></div>
+                </Select>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -423,7 +423,7 @@ export default function TasksPage() {
                   <option value="">-- Select Employee --</option>
                   {employees.map((emp) => (
                     <option key={emp.uid} value={emp.uid}>
-                      {emp.name} — [{emp.role.toUpperCase()}]
+                      {emp.name} ï¿½ [{emp.role.toUpperCase()}]
                     </option>
                   ))}
                 </select>
