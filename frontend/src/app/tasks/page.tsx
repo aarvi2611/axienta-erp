@@ -55,6 +55,8 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [formData, setFormData] = useState({
     title: "",
@@ -110,6 +112,42 @@ export default function TasksPage() {
     pending: tasks.filter(t => t.status === "pending").length,
     inProgress: tasks.filter(t => t.status === "in_progress").length,
     completed: tasks.filter(t => t.status === "completed").length,
+  };
+
+  const handleOpenEditModal = (task: Task) => {
+    setEditingTaskId(task.id);
+    setFormData({
+      title: task.title,
+      description: task.description || "",
+      assignedTo: task.assignedTo,
+      assignedToName: task.assignedToName,
+      assignedToRole: (task as any).assignedToRole || "",
+      deadline: task.deadline,
+      priority: task.priority,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateTask = async () => {
+    if (!editingTaskId) return;
+    try {
+      await updateDoc(doc(db, "tasks", editingTaskId), {
+        title: formData.title,
+        description: formData.description,
+        assignedTo: formData.assignedTo,
+        assignedToName: formData.assignedToName,
+        assignedToRole: formData.assignedToRole,
+        deadline: formData.deadline,
+        priority: formData.priority,
+        updatedAt: new Date().toISOString()
+      });
+      setShowEditModal(false);
+      setEditingTaskId(null);
+    } catch (e) {
+      setTasks(prev => prev.map(t => t.id === editingTaskId ? { ...t, ...formData, updatedAt: new Date().toISOString() } : t));
+      setShowEditModal(false);
+      setEditingTaskId(null);
+    }
   };
 
   const handleAddTask = async () => {
@@ -206,7 +244,7 @@ export default function TasksPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.05 }}
           >
-            <Card className="hover:shadow-lg transition-all duration-300 h-full">
+            <Card className="hover:shadow-lg transition-all duration-300 h-full cursor-pointer hover:border-[#0F2557]" onClick={() => handleOpenEditModal(task)}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <Badge variant={priorityBadge(task.priority) as any} className="capitalize">
@@ -242,7 +280,7 @@ export default function TasksPage() {
                 </div>
 
                 {/* Status Update */}
-                <div className="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
                   <Select
                     value={task.status}
                     onChange={(e) => handleStatusChange(task.id, e.target.value as TaskStatus)}
@@ -314,7 +352,7 @@ export default function TasksPage() {
                       {emp.name} â€” [{emp.role.toUpperCase()}] ({emp.department})
                     </option>
                   ))}
-                </select>
+                </Select></div>
                 {/* Optional manual override if employee not registered yet */}
                 {employees.length === 0 && (
                   <Input
@@ -332,7 +370,7 @@ export default function TasksPage() {
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
                   <option value="urgent">Urgent</option>
-                </Select>
+                </Select></div>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -346,6 +384,74 @@ export default function TasksPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    
+      {/* Edit/View Task Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>View / Edit Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Task Title *</label>
+              <Input placeholder="Enter task title" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} disabled={!hasPermission("assign_tasks")} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
+              <Textarea placeholder="Task description..." value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} disabled={!hasPermission("assign_tasks")} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Assign To</label>
+                <select
+                  value={formData.assignedTo}
+                  onChange={(e) => {
+                    const selectedUid = e.target.value;
+                    const emp = employees.find((x) => x.uid === selectedUid);
+                    if (emp) {
+                      setFormData({
+                        ...formData,
+                        assignedTo: emp.uid,
+                        assignedToName: emp.name,
+                        assignedToRole: emp.role,
+                      });
+                    }
+                  }}
+                  disabled={!hasPermission("assign_tasks")}
+                  className="w-full h-10 px-3 py-2 border rounded-md text-xs bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0F2557]"
+                >
+                  <option value="">-- Select Employee --</option>
+                  {employees.map((emp) => (
+                    <option key={emp.uid} value={emp.uid}>
+                      {emp.name} — [{emp.role.toUpperCase()}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Priority</label>
+                <Select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value as TaskPriority })} disabled={!hasPermission("assign_tasks")}>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Deadline</label>
+              <Input type="date" value={formData.deadline} onChange={e => setFormData({ ...formData, deadline: e.target.value })} disabled={!hasPermission("assign_tasks")} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>Close</Button>
+            {hasPermission("assign_tasks") && (
+              <Button onClick={handleUpdateTask} disabled={!formData.title}>Save Changes</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
+
