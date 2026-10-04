@@ -47,10 +47,12 @@ export default function ReportsPage() {
   // 1. Subscribe to Firestore 'users'
   useEffect(() => {
     try {
-      const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+      const q = collection(db, "users");
       const unsub = onSnapshot(q, (snap) => {
         if (!snap.empty) {
-          setEmployees(snap.docs.map(d => ({ uid: d.id, ...d.data() } as User)));
+          const arr = snap.docs.map(d => ({ uid: d.id, ...d.data() } as User));
+          arr.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+          setEmployees(arr);
         } else {
           setEmployees([]);
         }

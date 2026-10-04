@@ -82,7 +82,12 @@ export default function EmployeesPage() {
         .map((u) => ({
           ...u,
           ...(overrides[u.uid] || {}),
-        }));
+        }))
+        .sort((a, b) => {
+          const tA = new Date(a.createdAt || 0).getTime();
+          const tB = new Date(b.createdAt || 0).getTime();
+          return tB - tA; // Descending
+        });
       setEmployees(merged);
       setLoading(false);
     };
@@ -91,7 +96,7 @@ export default function EmployeesPage() {
     let unsubOverrides = () => {};
 
     try {
-      const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+      const q = collection(db, "users");
       unsubUsers = onSnapshot(q, (snap) => {
         if (!snap.empty) {
           baseUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() } as User));
