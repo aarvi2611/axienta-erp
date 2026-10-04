@@ -28,7 +28,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Attendance } from "@/types";
-import BiometricCameraModal from "@/components/attendance/BiometricCameraModal";
+
 import { attendanceStore } from "@/lib/attendanceService";
 
 const today = new Date().toISOString().slice(0, 10);
@@ -38,13 +38,13 @@ export default function AttendancePage() {
     user,
     isCheckedInToday,
     todayAttendance,
-    checkInWithPhoto,
+    checkIn,
     checkOutToday,
   } = useAuth();
 
-  const [showCameraModal, setShowCameraModal] = useState(false);
   const [attendanceList, setAttendanceList] = useState<Attendance[]>([]);
   const [inspectPhoto, setInspectPhoto] = useState<{ url: string; title: string; score?: number } | null>(null);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // Sync live attendance list from store
@@ -69,11 +69,14 @@ export default function AttendancePage() {
     };
   }, [user, todayAttendance]);
 
-  const handleBiometricSuccess = async (photoDataUrl: string, score: number) => {
+  const handleCheckIn = async () => {
+    setIsCheckingIn(true);
     try {
-      await checkInWithPhoto(photoDataUrl, score);
+      await checkIn();
     } catch (err) {
       console.error("Check-in error:", err);
+    } finally {
+      setIsCheckingIn(false);
     }
   };
 
@@ -342,10 +345,11 @@ export default function AttendancePage() {
 
               {!isCheckedInToday ? (
                 <Button
-                  onClick={() => setShowCameraModal(true)}
+                  onClick={handleCheckIn}
+                  disabled={isCheckingIn}
                   className="bg-gradient-to-r from-[#D4A843] to-[#b88e2c] text-slate-950 font-bold hover:brightness-105 shadow-md px-6 py-2.5 rounded-xl flex items-center gap-2 text-sm"
                 >
-                  <Camera className="w-4 h-4" /> Take Photo & Check In
+                  <LogIn className="w-4 h-4" /> {isCheckingIn ? "Checking In..." : "Check In Now"}
                 </Button>
               ) : !todayAttendance?.checkOut ? (
                 <Button
@@ -392,13 +396,6 @@ export default function AttendancePage() {
           searchKeys={["userName", "notes"]}
         />
       </div>
-
-      {/* Biometric Camera Modal */}
-      <BiometricCameraModal
-        isOpen={showCameraModal}
-        onClose={() => setShowCameraModal(false)}
-        onSuccess={handleBiometricSuccess}
-      />
 
       {/* Photo Inspector Modal */}
       {inspectPhoto && (

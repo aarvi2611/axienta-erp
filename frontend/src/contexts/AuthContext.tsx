@@ -22,7 +22,9 @@ import {
 } from "firebase/firestore";
 import { User, UserRole, ROLE_PERMISSIONS, Notification, normalizeRole, Attendance } from "@/types";
 import { attendanceStore } from "@/lib/attendanceService";
-import { auth, db } from "@/config/firebase";
+import { auth, db, firebaseConfig } from "@/config/firebase";
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth as getSecondaryAuth } from "firebase/auth";
 
 interface AuthContextType {
   user: User | null;
@@ -39,7 +41,7 @@ interface AuthContextType {
   toggleDarkMode: () => void;
   isCheckedInToday: boolean;
   todayAttendance: Attendance | null;
-  checkInWithPhoto: (photoDataUrl: string, verificationScore: number) => Promise<Attendance>;
+  checkIn: () => Promise<Attendance>;
   checkOutToday: () => Promise<Attendance | null>;
   refreshAttendance: () => void;
 }
@@ -79,9 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isCheckedInToday = !!todayAttendance && !!todayAttendance.checkIn && todayAttendance.status === "present";
 
-  const checkInWithPhoto = async (photoDataUrl: string, verificationScore: number) => {
+  const checkIn = async () => {
     if (!user) throw new Error("No authenticated user");
-    const record = await attendanceStore.recordCheckIn(user, photoDataUrl, verificationScore);
+    const record = await attendanceStore.recordCheckIn(user, "", 100);
     setTodayAttendance(record);
     return record;
   };
@@ -316,11 +318,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const createEmployee = async (data: CreateEmployeeData) => {
     const password = data.password || Math.random().toString(36).slice(-10) + "A1!";
-    // We create the user via Firebase Auth
-    // NOTE: In production, use Firebase Admin SDK on backend
-    // For now, we use client-side creation
-    const cred = await createUserWithEmailAndPassword(auth, data.email, password);
+    
+    const secondaryApp = getApps().find(a => a.name === "SecondaryApp") || initializeApp(firebaseConfig, "SecondaryApp");
+    const secondaryAuth = getSecondaryAuth(secondaryApp);
+    
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, data.email, password);
     await updateProfile(cred.user, { displayName: data.displayName });
+    await signOut(secondaryAuth);
 
     const employeeId = `AXN-${Math.floor(1000 + Math.random() * 9000)}`;
     const userData: Omit<User, "uid"> = {
@@ -457,7 +461,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         toggleDarkMode,
         isCheckedInToday,
         todayAttendance,
-        checkInWithPhoto,
+        checkIn,
         checkOutToday,
         refreshAttendance,
       }}

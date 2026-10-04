@@ -4,7 +4,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyBDzPuLRL37CHiGPgqDBW81kL20Dxj6HPo",
   authDomain: "axientaerp.firebaseapp.com",
   projectId: "axientaerp",

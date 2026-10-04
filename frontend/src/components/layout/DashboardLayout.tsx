@@ -8,10 +8,10 @@ import { Lock, Camera, ArrowRight, ShieldAlert, Sparkles, CheckCircle2 } from "l
 import { Button } from "@/components/ui/button";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
-import BiometricCameraModal from "@/components/attendance/BiometricCameraModal";
+
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, isCheckedInToday, checkInWithPhoto } = useAuth();
+  const { user, loading, isCheckedInToday, checkIn } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
@@ -85,10 +85,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Button
-                  onClick={() => setCameraModalOpen(true)}
+                  onClick={checkIn}
                   className="bg-gradient-to-r from-[#D4A843] to-[#E8C976] text-slate-950 font-bold px-6 py-2.5 rounded-xl shadow-md hover:brightness-105 flex items-center gap-2 text-xs"
                 >
-                  <Camera className="w-4 h-4" /> Open Camera & Check In Now
+                  <CheckCircle2 className="w-4 h-4" /> Click here to Check In Now
                 </Button>
                 <Link
                   href="/attendance"
@@ -104,15 +104,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
         </main>
       </div>
-
-      <BiometricCameraModal
-        isOpen={cameraModalOpen}
-        onClose={() => setCameraModalOpen(false)}
-        onSuccess={async (photo, score) => {
-          await checkInWithPhoto(photo, score);
-          setCameraModalOpen(false);
-        }}
-      />
     </div>
   );
 }
