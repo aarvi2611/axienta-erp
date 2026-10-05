@@ -366,6 +366,18 @@ export default function CallingPage() {
           }}>
             <MessageSquare className="w-3.5 h-3.5 mr-1" /> WA
           </Button>
+          <Button size="sm" variant="outline" className="h-8 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={async () => {
+            if (confirm("Are you sure you want to delete this lead?")) {
+              try {
+                await deleteDoc(doc(db, "leads", row.id));
+              } catch (err) {
+                console.error("Error deleting lead:", err);
+                alert("Failed to delete lead.");
+              }
+            }
+          }}>
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
         </div>
       )
     }

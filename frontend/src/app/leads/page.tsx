@@ -202,7 +202,8 @@ export default function LeadsPage() {
           </button>
           <button className="p-1.5 rounded-lg text-slate-400 hover:text-[#D4A843] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <Edit className="w-4 h-4" />
-          </button>
+            </button>
+            <button onClick={async (e) => { e.stopPropagation(); if (confirm("Are you sure you want to delete this lead?")) { await deleteDoc(doc(db, "leads", row.id)); } }} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-4 h-4" /></button>
         </div>
       ),
     },
