@@ -72,7 +72,7 @@ export default function CallingPage() {
     });
 
     // 2. Fetch Calling Leads
-    const qLeads = query(collection(db, "calling_leads"), orderBy("createdAt", "desc"));
+    const qLeads = query(collection(db, "leads"), orderBy("createdAt", "desc"));
     const unsubLeads = onSnapshot(qLeads, (snap) => {
       setCallingLeads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
@@ -196,7 +196,7 @@ export default function CallingPage() {
         for (const chunk of chunks) {
           const batch = writeBatch(db);
           chunk.forEach((lead) => {
-             const docRef = doc(collection(db, "calling_leads"));
+             const docRef = doc(collection(db, "leads"));
              batch.set(docRef, lead);
              count++;
           });
