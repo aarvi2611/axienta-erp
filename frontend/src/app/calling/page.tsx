@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Avatar } from "@/components/ui/avatar";
 import { CallLog } from "@/types";
 import { formatDateTime } from "@/lib/utils";
-import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, writeBatch, setDoc } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
@@ -78,15 +78,15 @@ export default function CallingPage() {
     });
 
     // 3. Fetch WhatsApp Templates
-    const unsubTemplates = onSnapshot(collection(db, "whatsapp_templates"), (snap) => {
-      if (snap.empty) {
+    const unsubTemplates = onSnapshot(doc(db, "operations", "whatsapp_templates"), (snap) => {
+      if (snap.exists() && snap.data().templates) {
+        setWhatsappTemplates(snap.data().templates);
+      } else {
         // Fallback static templates if none
         setWhatsappTemplates([
           { id: "1", name: "Introduction", message: "Hello [Name]! I'm calling from Axenta Business Consulting. We offer premium business solutions tailored to your needs. Would you be interested in learning more?" },
           { id: "2", name: "Follow-Up", message: "Hi [Name]! This is a follow-up from our previous conversation. We'd love to schedule a meeting to discuss how we can help your business grow." }
         ]);
-      } else {
-        setWhatsappTemplates(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
     });
 
@@ -268,28 +268,43 @@ export default function CallingPage() {
   const handleSaveTemplate = async () => {
     if (!templateForm.name || !templateForm.message) return;
     try {
+      let updatedTemplates = [...whatsappTemplates];
       if (editingTemplate) {
-        await updateDoc(doc(db, "whatsapp_templates", editingTemplate.id), {
-          name: templateForm.name,
-          message: templateForm.message
-        });
+        updatedTemplates = updatedTemplates.map(t => 
+           t.id === editingTemplate.id ? { ...t, name: templateForm.name, message: templateForm.message } : t
+        );
       } else {
-        await addDoc(collection(db, "whatsapp_templates"), {
-          name: templateForm.name,
-          message: templateForm.message
+        updatedTemplates.push({
+           id: Date.now().toString(),
+           name: templateForm.name,
+           message: templateForm.message
         });
       }
+      
+      await setDoc(doc(db, "operations", "whatsapp_templates"), {
+        templates: updatedTemplates
+      });
+      
       setShowTemplateModal(false);
       setEditingTemplate(null);
       setTemplateForm({ name: "", message: "" });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Save template error:", err);
+      alert("Error saving template: " + (err.message || err.toString()));
     }
   };
 
   const handleDeleteTemplate = async (id: string) => {
     if (confirm("Are you sure you want to delete this template?")) {
-      await deleteDoc(doc(db, "whatsapp_templates", id));
+      try {
+        const updatedTemplates = whatsappTemplates.filter(t => t.id !== id);
+        await setDoc(doc(db, "operations", "whatsapp_templates"), {
+          templates: updatedTemplates
+        });
+      } catch (err: any) {
+        console.error("Delete template error:", err);
+        alert("Error deleting template: " + (err.message || err.toString()));
+      }
     }
   };
 
