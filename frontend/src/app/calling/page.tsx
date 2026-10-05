@@ -104,7 +104,7 @@ export default function CallingPage() {
     setImporting(true);
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
+      const workbook = XLSX.read(data, { type: 'array' });
       
       let allLeads: any[] = [];
       
@@ -207,9 +207,9 @@ export default function CallingPage() {
       } else {
          alert("No data found in Excel file.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Import error:", error);
-      alert("Error importing Excel file.");
+      alert("Error importing Excel file: " + (error.message || error.toString()));
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
