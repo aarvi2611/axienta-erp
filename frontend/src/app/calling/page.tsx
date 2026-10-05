@@ -313,7 +313,8 @@ export default function CallingPage() {
     if (selectedLeadName) {
       msg = msg.replace(/\[Name\]/g, selectedLeadName).replace(/{name}/g, selectedLeadName);
     }
-    const url = "https://wa.me/" + selectedLeadPhone + "?text=" + encodeURIComponent(msg);
+    const cleanPhone = String(selectedLeadPhone).replace(/\D/g, '');
+    const url = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(msg);
     window.open(url, '_blank');
     setShowWhatsApp(false);
   };
