@@ -37,7 +37,7 @@ const statusBadge = (status: string) => {
 
 export default function CallingPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"leads" | "history">("leads");
+  const [activeTab, setActiveTab] = useState<"domestic" | "international" | "history">("domestic");
 
   // Call Logs state
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
@@ -128,7 +128,7 @@ export default function CallingPage() {
         if (headerRowIndex !== -1) {
           for (let i = headerRowIndex + 1; i < rows.length; i++) {
             const rowData = rows[i];
-            const leadObj: any = {};
+            const leadObj: any = { _sourceSheet: sheetName };
             headers.forEach((h, index) => {
               if (h) leadObj[h] = rowData[index];
             });
@@ -136,8 +136,8 @@ export default function CallingPage() {
           }
         } else {
           // Fallback if no specific header matches
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-          allLeads = allLeads.concat(jsonData);
+          const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+          allLeads = allLeads.concat(jsonData.map(r => ({ ...r, _sourceSheet: sheetName })));
         }
       });
 
@@ -152,15 +152,34 @@ export default function CallingPage() {
         const validLeads: any[] = [];
         
         allLeads.forEach((row) => {
-          const rawName = row["Business Name"] || row["Business Name *"] || row["Business Name *\n(Enter to Generate ID)"] || row.Name || row.name || row["Lead Name"] || row.Client || "";
-          const rawPhone = row["Direct Contact No."] || row["Intl Contact / WhatsApp"] || row.Phone || row.phone || row.Number || row.Mobile || row["Phone Number"] || "";
-          const rawEmail = row.Email || row.email || "";
-          const rawCompany = row.Company || row.company || row["Industry Category"] || row["Industry Sector"] || "";
-          const rawCity = row["Market Hub / City"] || row["City / Metro Hub"] || "";
+          let rawName = "";
+          let rawPhone = "";
+          let rawEmail = "";
+          let rawCompany = "";
+          let rawCity = "";
+          let rawCountry = "";
+
+          Object.keys(row).forEach(key => {
+             const lowerKey = key.toLowerCase();
+             if (lowerKey.includes("business name") || lowerKey === "name" || lowerKey.includes("lead name") || lowerKey.includes("client")) {
+                 rawName = row[key];
+             } else if (lowerKey.includes("contact no") || lowerKey.includes("whatsapp") || lowerKey === "phone" || lowerKey.includes("mobile") || lowerKey.includes("number")) {
+                 rawPhone = row[key];
+             } else if (lowerKey === "email") {
+                 rawEmail = row[key];
+             } else if (lowerKey.includes("company") || lowerKey.includes("industry sector") || lowerKey.includes("industry category")) {
+                 rawCompany = row[key];
+             } else if (lowerKey.includes("city") || lowerKey.includes("hub")) {
+                 rawCity = row[key];
+             } else if (lowerKey.includes("country")) {
+                 rawCountry = row[key];
+             }
+          });
           
           const name = String(rawName).trim();
           const phoneStr = String(rawPhone).trim();
           const cleanPhone = phoneStr.replace(/\D/g, '');
+          const isInternational = String(row._sourceSheet || "").toLowerCase().includes("international") || (rawCountry && !String(rawCountry).toLowerCase().includes("india"));
           
           if (name || phoneStr) {
              if (cleanPhone && existingPhones.has(cleanPhone)) {
@@ -176,10 +195,12 @@ export default function CallingPage() {
              if (name) existingNames.add(name.toLowerCase());
              
              validLeads.push({
-               name,
+               name: name || "Unknown Lead",
                phone: phoneStr,
                email: String(rawEmail).trim(),
                company: String(rawCompany).trim() + (rawCity ? ` (${rawCity})` : ""),
+               country: String(rawCountry).trim() || (isInternational ? "International" : "India"),
+               leadType: isInternational ? "international" : "domestic",
                status: "new",
                importedAt: new Date().toISOString(),
                createdAt: new Date().toISOString(),
@@ -389,23 +410,33 @@ export default function CallingPage() {
         <StatsCard title="Callbacks" value={stats.callbacks} icon={Clock} color="gold" delay={0.3} />
       </div>
 
-      <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 overflow-x-auto">
         <button
-          className={"px-4 py-2 text-sm font-medium border-b-2 " + (activeTab === "leads" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
-          onClick={() => setActiveTab("leads")}
+          className={"px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap " + (activeTab === "domestic" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+          onClick={() => setActiveTab("domestic")}
         >
-          Imported Leads ({callingLeads.length})
+          Domestic Leads ({callingLeads.filter(l => l.leadType !== "international").length})
         </button>
         <button
-          className={"px-4 py-2 text-sm font-medium border-b-2 " + (activeTab === "history" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+          className={"px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap " + (activeTab === "international" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+          onClick={() => setActiveTab("international")}
+        >
+          International Leads ({callingLeads.filter(l => l.leadType === "international").length})
+        </button>
+        <button
+          className={"px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap " + (activeTab === "history" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
           onClick={() => setActiveTab("history")}
         >
           Call History ({callLogs.length})
         </button>
       </div>
 
-      {activeTab === "leads" && (
-        <DataTable columns={leadColumns} data={callingLeads} searchable searchKeys={["name", "phone", "email"]} />
+      {activeTab === "domestic" && (
+        <DataTable columns={leadColumns} data={callingLeads.filter(l => l.leadType !== "international")} searchable searchKeys={["name", "phone", "email"]} />
+      )}
+      
+      {activeTab === "international" && (
+        <DataTable columns={leadColumns} data={callingLeads.filter(l => l.leadType === "international")} searchable searchKeys={["name", "phone", "email"]} />
       )}
 
       {activeTab === "history" && (

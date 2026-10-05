@@ -1,18 +1,75 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 const file = 'frontend/src/app/calling/page.tsx';
 let content = fs.readFileSync(file, 'utf8');
 
-const regex = /const handleFileUpload = async \(e: React\.ChangeEvent<HTMLInputElement>\) => \{[\s\S]*?if \(fileInputRef\.current\) fileInputRef\.current\.value = "";\s*\n\s*\}\s*\};/;
+// 1. Update Tabs State
+content = content.replace(
+  'const [activeTab, setActiveTab] = useState<"leads" | "history">("leads");',
+  'const [activeTab, setActiveTab] = useState<"domestic" | "international" | "history">("domestic");'
+);
 
-const replacement = \const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+// 2. Update Tabs UI
+const oldTabs = \      <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6">
+        <button
+          className={"px-4 py-2 text-sm font-medium border-b-2 " + (activeTab === "leads" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+          onClick={() => setActiveTab("leads")}
+        >
+          Imported Leads (\)
+        </button>
+        <button
+          className={"px-4 py-2 text-sm font-medium border-b-2 " + (activeTab === "history" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+          onClick={() => setActiveTab("history")}
+        >
+          Call History (\)
+        </button>
+      </div>
+
+      {activeTab === "leads" && (
+        <DataTable columns={leadColumns} data={callingLeads} searchable searchKeys={["name", "phone", "email"]} />
+      )}\;
+
+const newTabs = \      <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 overflow-x-auto">
+        <button
+          className={"px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap " + (activeTab === "domestic" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+          onClick={() => setActiveTab("domestic")}
+        >
+          Domestic Leads (\)
+        </button>
+        <button
+          className={"px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap " + (activeTab === "international" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+          onClick={() => setActiveTab("international")}
+        >
+          International Leads (\)
+        </button>
+        <button
+          className={"px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap " + (activeTab === "history" ? "border-[#0F2557] text-[#0F2557] dark:border-[#D4A843] dark:text-[#D4A843]" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+          onClick={() => setActiveTab("history")}
+        >
+          Call History (\)
+        </button>
+      </div>
+
+      {activeTab === "domestic" && (
+        <DataTable columns={leadColumns} data={callingLeads.filter(l => l.leadType !== "international")} searchable searchKeys={["name", "phone", "email"]} />
+      )}
+      {activeTab === "international" && (
+        <DataTable columns={leadColumns} data={callingLeads.filter(l => l.leadType === "international")} searchable searchKeys={["name", "phone", "email"]} />
+      )}\;
+
+content = content.replace(oldTabs, newTabs);
+
+// 3. Update Excel Parse Logic
+const oldUpload = /const handleFileUpload = async \(e: React\.ChangeEvent<HTMLInputElement>\) => \{[\s\S]*?if \(fileInputRef\.current\) fileInputRef\.current\.value = "";\s*\n\s*\}\s*\};/;
+
+const newUpload = \const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setImporting(true);
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
+      const workbook = XLSX.read(data, { type: 'array' });
       
       let allLeads: any[] = [];
       
@@ -36,15 +93,16 @@ const replacement = \const handleFileUpload = async (e: React.ChangeEvent<HTMLIn
         if (headerRowIndex !== -1) {
           for (let i = headerRowIndex + 1; i < rows.length; i++) {
             const rowData = rows[i];
-            const leadObj: any = {};
+            const leadObj: any = { _sourceSheet: sheetName };
             headers.forEach((h, index) => {
               if (h) leadObj[h] = rowData[index];
             });
             allLeads.push(leadObj);
           }
         } else {
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-          allLeads = allLeads.concat(jsonData);
+          // Fallback if no specific header matches
+          const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+          allLeads = allLeads.concat(jsonData.map(row => ({ ...row, _sourceSheet: sheetName })));
         }
       });
 
@@ -52,21 +110,41 @@ const replacement = \const handleFileUpload = async (e: React.ChangeEvent<HTMLIn
         let count = 0;
         let skipped = 0;
         
+        // Load existing phones and names for deduplication
         const existingPhones = new Set(callingLeads.map(l => String(l.phone || "").trim().replace(/\\D/g, '')).filter(Boolean));
         const existingNames = new Set(callingLeads.map(l => String(l.name || "").trim().toLowerCase()).filter(Boolean));
 
-        const validLeads = [];
+        const validLeads: any[] = [];
         
         allLeads.forEach((row) => {
-          const rawName = row["Business Name"] || row["Business Name *"] || row["Business Name *\\n(Enter to Generate ID)"] || row.Name || row.name || row["Lead Name"] || row.Client || "";
-          const rawPhone = row["Direct Contact No."] || row["Intl Contact / WhatsApp"] || row.Phone || row.phone || row.Number || row.Mobile || row["Phone Number"] || "";
-          const rawEmail = row.Email || row.email || "";
-          const rawCompany = row.Company || row.company || row["Industry Category"] || row["Industry Sector"] || "";
-          const rawCity = row["Market Hub / City"] || row["City / Metro Hub"] || "";
+          let rawName = "";
+          let rawPhone = "";
+          let rawEmail = "";
+          let rawCompany = "";
+          let rawCity = "";
+          let rawCountry = "";
+
+          Object.keys(row).forEach(key => {
+             const lowerKey = key.toLowerCase();
+             if (lowerKey.includes("business name") || lowerKey === "name" || lowerKey.includes("lead name") || lowerKey.includes("client")) {
+                 rawName = row[key];
+             } else if (lowerKey.includes("contact no") || lowerKey.includes("whatsapp") || lowerKey === "phone" || lowerKey.includes("mobile") || lowerKey.includes("number")) {
+                 rawPhone = row[key];
+             } else if (lowerKey === "email") {
+                 rawEmail = row[key];
+             } else if (lowerKey.includes("company") || lowerKey.includes("industry sector") || lowerKey.includes("industry category")) {
+                 rawCompany = row[key];
+             } else if (lowerKey.includes("city") || lowerKey.includes("hub")) {
+                 rawCity = row[key];
+             } else if (lowerKey.includes("country")) {
+                 rawCountry = row[key];
+             }
+          });
           
           const name = String(rawName).trim();
           const phoneStr = String(rawPhone).trim();
           const cleanPhone = phoneStr.replace(/\\D/g, '');
+          const isInternational = String(row._sourceSheet || "").toLowerCase().includes("international") || (rawCountry && !String(rawCountry).toLowerCase().includes("india"));
           
           if (name || phoneStr) {
              if (cleanPhone && existingPhones.has(cleanPhone)) {
@@ -82,10 +160,12 @@ const replacement = \const handleFileUpload = async (e: React.ChangeEvent<HTMLIn
              if (name) existingNames.add(name.toLowerCase());
              
              validLeads.push({
-               name,
+               name: name || "Unknown Lead",
                phone: phoneStr,
                email: String(rawEmail).trim(),
                company: String(rawCompany).trim() + (rawCity ? \ (\)\ : ""),
+               country: String(rawCountry).trim() || (isInternational ? "International" : "India"),
+               leadType: isInternational ? "international" : "domestic",
                status: "new",
                importedAt: new Date().toISOString(),
                createdAt: new Date().toISOString(),
@@ -102,7 +182,7 @@ const replacement = \const handleFileUpload = async (e: React.ChangeEvent<HTMLIn
         for (const chunk of chunks) {
           const batch = writeBatch(db);
           chunk.forEach((lead) => {
-             const docRef = doc(collection(db, "calling_leads"));
+             const docRef = doc(collection(db, "leads"));
              batch.set(docRef, lead);
              count++;
           });
@@ -113,14 +193,15 @@ const replacement = \const handleFileUpload = async (e: React.ChangeEvent<HTMLIn
       } else {
          alert("No data found in Excel file.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Import error:", error);
-      alert("Error importing Excel file.");
+      alert("Error importing Excel file: " + (error.message || error.toString()));
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };\;
 
-content = content.replace(regex, replacement);
+content = content.replace(oldUpload, newUpload);
+
 fs.writeFileSync(file, content, 'utf8');
