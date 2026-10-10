@@ -536,10 +536,20 @@ export default function CallingPage() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Lead / Client Name *</label>
               <Input
-                placeholder="Search or enter lead name"
-                value={leadName}
-                onChange={(e) => setLeadName(e.target.value)}
-              />
+                  placeholder="Search or enter lead name"
+                  value={leadName}
+                  onChange={(e) => {
+                    setLeadName(e.target.value);
+                    const match = callingLeads.find(l => l.name === e.target.value);
+                    if (match) setSelectedLeadId(match.id);
+                  }}
+                  list="leads-list"
+                />
+                <datalist id="leads-list">
+                  {callingLeads.filter(l => l.name).map(l => (
+                    <option key={l.id} value={l.name} />
+                  ))}
+                </datalist>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Select
