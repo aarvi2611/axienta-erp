@@ -73,7 +73,11 @@ export default function TasksPage() {
       const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
       const unsub = onSnapshot(q, (snap) => {
         if (!snap.empty) {
-          setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as Task)));
+          let fetchedTasks = snap.docs.map(d => ({ id: d.id, ...d.data() } as Task));
+            if (user && !["admin", "ceo", "head_manager"].includes(user.role)) {
+              fetchedTasks = fetchedTasks.filter(t => t.assignedTo === user.uid);
+            }
+            setTasks(fetchedTasks);
         } else {
           setTasks([]);
         }

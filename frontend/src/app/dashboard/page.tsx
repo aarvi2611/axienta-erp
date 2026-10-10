@@ -48,6 +48,7 @@ const PIPELINE_COLORS: Record<string, string> = {
 export default function DashboardPage() {
   const { user, hasPermission } = useAuth();
   const isManager = hasPermission("view_analytics");
+  const canViewRevenue = user && ["admin", "ceo", "head_manager", "sales_executive", "CEO", "Admin", "Head Manager", "Sales Executive"].includes(user.role);
 
   // Real data states from Firebase
   const [employees, setEmployees] = useState<User[]>([]);
@@ -292,14 +293,16 @@ export default function DashboardPage() {
             color="green"
             delay={0.2}
           />
-          <StatsCard
-            title="Client Retainers (MTD)"
-            value={formattedRevenue}
-            change={clients.length > 0 ? 20 : undefined}
-            icon={DollarSign}
-            color="purple"
-            delay={0.3}
-          />
+          {canViewRevenue && (
+            <StatsCard
+              title="Client Retainers (MTD)"
+              value={formattedRevenue}
+              change={clients.length > 0 ? 20 : undefined}
+              icon={DollarSign}
+              color="purple"
+              delay={0.3}
+            />
+          )}
         </div>
 
         {isManager && (
@@ -349,14 +352,16 @@ export default function DashboardPage() {
                             }}
                           />
                           <Legend />
-                          <Area
-                            type="monotone"
-                            dataKey="revenue"
-                            stroke="#0F2557"
-                            fill="url(#revenueGrad)"
-                            strokeWidth={2}
-                            name="Revenue (₹)"
-                          />
+                          {canViewRevenue && (
+                            <Area
+                              type="monotone"
+                              dataKey="revenue"
+                              stroke="#0F2557"
+                              fill="url(#revenueGrad)"
+                              strokeWidth={2}
+                              name="Revenue (₹)"
+                            />
+                          )}
                           <Area
                             type="monotone"
                             dataKey="leads"

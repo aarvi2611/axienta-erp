@@ -465,10 +465,10 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "notifications", "profile", "assign_tasks", "approve_work"
   ],
   sales_executive: [
-    "dashboard", "leads", "crm", "tasks", "notifications", "profile"
+    "dashboard", "leads", "crm", "calling", "tasks", "notifications", "profile"
   ],
   "Sales Executive": [
-    "dashboard", "leads", "crm", "tasks", "notifications", "profile"
+    "dashboard", "leads", "crm", "calling", "tasks", "notifications", "profile"
   ],
   calling_executive: [
     "dashboard", "leads", "calling", "tasks", "notifications", "profile"
