@@ -77,7 +77,7 @@ export default function CallingPage() {
     const unsubLeads = onSnapshot(qLeads, (snap) => {
       let leads = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (user && !["admin", "ceo", "head_manager"].includes(user.role)) {
-        leads = leads.filter(l => l.assignedTo === user.uid);
+        leads = leads.filter(l => l.assignedTo === user.uid || (l.assignedToName && user.displayName && l.assignedToName.toLowerCase().includes(user.displayName.toLowerCase())));
       }
       setCallingLeads(leads);
     });
@@ -105,6 +105,7 @@ export default function CallingPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const fileNameWithoutExt = file.name.replace(/\\.[^/.]+$/, "");
 
     setImporting(true);
     try {
@@ -210,7 +211,7 @@ export default function CallingPage() {
                importedAt: new Date().toISOString(),
                createdAt: new Date().toISOString(),
                assignedTo: user?.uid,
-               assignedToName: user?.displayName || "Executive",
+               assignedToName: fileNameWithoutExt || user?.displayName || "Executive",
                whatsappCount: 0,
              });
           }
