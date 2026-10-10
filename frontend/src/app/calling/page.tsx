@@ -63,6 +63,7 @@ export default function CallingPage() {
   const [templateForm, setTemplateForm] = useState({ name: "", message: "" });
   const [selectedLeadPhone, setSelectedLeadPhone] = useState("");
   const [selectedLeadName, setSelectedLeadName] = useState("");
+  const [selectedLeadId, setSelectedLeadId] = useState("");
 
   useEffect(() => {
     // 1. Fetch Call Logs
@@ -74,7 +75,11 @@ export default function CallingPage() {
     // 2. Fetch Calling Leads
     const qLeads = query(collection(db, "leads"), orderBy("createdAt", "desc"));
     const unsubLeads = onSnapshot(qLeads, (snap) => {
-      setCallingLeads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      let leads = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (user && !["admin", "ceo", "head_manager"].includes(user.role)) {
+        leads = leads.filter(l => l.assignedTo === user.uid);
+      }
+      setCallingLeads(leads);
     });
 
     // 3. Fetch WhatsApp Templates
@@ -204,6 +209,9 @@ export default function CallingPage() {
                status: "new",
                importedAt: new Date().toISOString(),
                createdAt: new Date().toISOString(),
+               assignedTo: user?.uid,
+               assignedToName: user?.displayName || "Executive",
+               whatsappCount: 0,
              });
           }
         });
@@ -257,6 +265,12 @@ export default function CallingPage() {
       setResponse("");
       setFollowUpDate("");
       setNotes("");
+      if (selectedLeadId) {
+        await updateDoc(doc(db, "leads", selectedLeadId), {
+          status: callStatus === "interested" ? "interested" : callStatus,
+          remarks: notes
+        });
+      }
       setShowLogModal(false);
     } catch (err) {
       console.error("Save call log error:", err);
@@ -308,15 +322,23 @@ export default function CallingPage() {
     }
   };
 
-  const openWhatsApp = (template: any) => {
+  const openWhatsApp = async (template: any) => {
     let msg = template.message;
     if (selectedLeadName) {
       msg = msg.replace(/\[Name\]/g, selectedLeadName).replace(/{name}/g, selectedLeadName);
     }
-    const cleanPhone = String(selectedLeadPhone).replace(/\D/g, '');
+    const cleanPhone = String(selectedLeadPhone).replace(/\D/g, "");
     const url = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(msg);
-    window.open(url, '_blank');
+    window.open(url, "_blank");
     setShowWhatsApp(false);
+    
+    if (selectedLeadId) {
+       const lead = callingLeads.find(l => l.id === selectedLeadId);
+       if (lead) {
+          const newCount = (lead.whatsappCount || 0) + 1;
+          await updateDoc(doc(db, "leads", selectedLeadId), { whatsappCount: newCount });
+       }
+    }
   };
 
   const stats = {
@@ -364,13 +386,16 @@ export default function CallingPage() {
     },
     { key: "phone", label: "Phone", render: (row: any) => <span className="text-sm">{row.phone || "-"}</span> },
     { key: "email", label: "Email", render: (row: any) => <span className="text-sm">{row.email || "-"}</span> },
-    { key: "createdAt", label: "Imported On", render: (row: any) => <span className="text-xs">{formatDateTime(row.createdAt)}</span> },
+    { key: "assignedToName", label: "Executive", render: (row: any) => <span className="text-xs">{row.assignedToName || "-"}</span> },
+      { key: "remarks", label: "Remarks", render: (row: any) => <span className="text-xs truncate max-w-[120px] inline-block" title={row.remarks}>{row.remarks || "-"}</span> },
+      { key: "createdAt", label: "Imported On", render: (row: any) => <span className="text-xs">{formatDateTime(row.createdAt)}</span> },
     {
       key: "actions", label: "Actions",
       render: (row: any) => (
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" className="h-8" onClick={() => {
             setLeadName(row.name || "");
+            setSelectedLeadId(row.id);
             setShowLogModal(true);
           }}>
             <Phone className="w-3.5 h-3.5 mr-1" /> Call
@@ -378,6 +403,7 @@ export default function CallingPage() {
           <Button size="sm" variant="outline" className="h-8 text-green-600 border-green-200 hover:bg-green-50 dark:hover:bg-green-900/20" onClick={() => {
             setSelectedLeadPhone(row.phone || "");
             setSelectedLeadName(row.name || "");
+            setSelectedLeadId(row.id);
             setShowWhatsApp(true);
           }}>
             <MessageSquare className="w-3.5 h-3.5 mr-1" /> WA
@@ -460,11 +486,11 @@ export default function CallingPage() {
       </div>
 
       {activeTab === "domestic" && (
-        <DataTable columns={leadColumns} data={callingLeads.filter(l => l.leadType !== "international")} searchable searchKeys={["name", "phone", "email"]} />
+        <DataTable columns={leadColumns} data={callingLeads.filter(l => l.leadType !== "international")} searchable searchKeys={["name", "phone", "email"]} rowClassName={(row) => { if (row.status === "interested") return "bg-amber-50 dark:bg-amber-900/20"; if (row.whatsappCount >= 2) return "bg-green-100 dark:bg-green-900/30"; if (row.whatsappCount === 1) return "bg-emerald-50 dark:bg-emerald-900/20"; return ""; }} />
       )}
       
       {activeTab === "international" && (
-        <DataTable columns={leadColumns} data={callingLeads.filter(l => l.leadType === "international")} searchable searchKeys={["name", "phone", "email"]} />
+        <DataTable columns={leadColumns} data={callingLeads.filter(l => l.leadType === "international")} searchable searchKeys={["name", "phone", "email"]} rowClassName={(row) => { if (row.status === "interested") return "bg-amber-50 dark:bg-amber-900/20"; if (row.whatsappCount >= 2) return "bg-green-100 dark:bg-green-900/30"; if (row.whatsappCount === 1) return "bg-emerald-50 dark:bg-emerald-900/20"; return ""; }} />
       )}
 
       {activeTab === "history" && (
@@ -521,6 +547,7 @@ export default function CallingPage() {
                 onChange={(e) => setCallStatus(e.target.value)}
               >
                 <option value="connected">Connected</option>
+                  <option value="interested">Interested</option>
                 <option value="no_answer">No Answer</option>
                 <option value="busy">Busy</option>
                 <option value="wrong_number">Wrong Number</option>

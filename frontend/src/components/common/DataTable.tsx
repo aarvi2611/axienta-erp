@@ -24,6 +24,7 @@ interface DataTableProps<T> {
   actions?: React.ReactNode;
   emptyMessage?: string;
   loading?: boolean;
+  rowClassName?: (row: T) => string;
 }
 
 export default function DataTable<T extends Record<string, any>>({
@@ -36,6 +37,7 @@ export default function DataTable<T extends Record<string, any>>({
   actions,
   emptyMessage = "No data found",
   loading = false,
+  rowClassName,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -152,8 +154,9 @@ export default function DataTable<T extends Record<string, any>>({
                   onClick={() => onRowClick?.(row)}
                   className={cn(
                     "border-b border-slate-100 dark:border-slate-700/50 transition-colors",
-                    onRowClick && "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30"
-                  )}
+                    onRowClick && "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30",
+                      rowClassName && rowClassName(row)
+                    )}
                 >
                   {columns.map((col) => (
                     <td key={col.key} className={cn("px-4 py-3 text-sm text-slate-700 dark:text-slate-300", col.className)}>
