@@ -35,6 +35,37 @@ const statusBadge = (status: string) => {
   }
 };
 
+const getWhatsAppPhone = (rawPhone: string, lead?: any): string => {
+  if (!rawPhone) return "";
+  let digits = String(rawPhone).replace(/\D/g, "");
+  if (!digits) return "";
+
+  const isDomestic = !lead || lead.leadType !== "international" || String(lead.country || "").toLowerCase() === "india";
+
+  if (isDomestic) {
+    if (digits.length === 10) {
+      return "91" + digits;
+    }
+    if (digits.length === 11 && digits.startsWith("0")) {
+      return "91" + digits.slice(1);
+    }
+    if (digits.length === 12 && digits.startsWith("91")) {
+      return digits;
+    }
+    if (digits.length === 13 && digits.startsWith("910")) {
+      return "91" + digits.slice(3);
+    }
+    if (digits.length > 10 && !digits.startsWith("91") && /^[6-9]\d{9}$/.test(digits.slice(-10))) {
+      return "91" + digits.slice(-10);
+    }
+  } else {
+    if (digits.length === 10 && /^[6-9]\d{9}$/.test(digits) && (String(lead?.country || "").toLowerCase() === "india" || !lead?.country)) {
+      return "91" + digits;
+    }
+  }
+  return digits;
+};
+
 export default function CallingPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"domestic" | "international" | "history">("domestic");
@@ -152,7 +183,7 @@ export default function CallingPage() {
         let skipped = 0;
         
         // Load existing phones and names for deduplication
-        const existingPhones = new Set(callingLeads.map(l => String(l.phone || "").trim().replace(/\D/g, '')).filter(Boolean));
+        const existingPhones = new Set(callingLeads.map(l => getWhatsAppPhone(l.phone || "", l)).filter(Boolean));
         const existingNames = new Set(callingLeads.map(l => String(l.name || "").trim().toLowerCase()).filter(Boolean));
 
         const validLeads: any[] = [];
@@ -184,8 +215,8 @@ export default function CallingPage() {
           
           const name = String(rawName).trim();
           const phoneStr = String(rawPhone).trim();
-          const cleanPhone = phoneStr.replace(/\D/g, '');
           const isInternational = String(row._sourceSheet || "").toLowerCase().includes("international") || (rawCountry && !String(rawCountry).toLowerCase().includes("india"));
+          const cleanPhone = getWhatsAppPhone(phoneStr, { leadType: isInternational ? "international" : "domestic", country: rawCountry });
           
           if (name || phoneStr) {
              if (cleanPhone && existingPhones.has(cleanPhone)) {
@@ -328,17 +359,15 @@ export default function CallingPage() {
     if (selectedLeadName) {
       msg = msg.replace(/\[Name\]/g, selectedLeadName).replace(/{name}/g, selectedLeadName);
     }
-    const cleanPhone = String(selectedLeadPhone).replace(/\D/g, "");
+    const lead = callingLeads.find(l => l.id === selectedLeadId);
+    const cleanPhone = getWhatsAppPhone(selectedLeadPhone, lead);
     const url = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(msg);
     window.open(url, "_blank");
     setShowWhatsApp(false);
     
-    if (selectedLeadId) {
-       const lead = callingLeads.find(l => l.id === selectedLeadId);
-       if (lead) {
-          const newCount = (lead.whatsappCount || 0) + 1;
-          await updateDoc(doc(db, "leads", selectedLeadId), { whatsappCount: newCount });
-       }
+    if (selectedLeadId && lead) {
+      const newCount = (lead.whatsappCount || 0) + 1;
+      await updateDoc(doc(db, "leads", selectedLeadId), { whatsappCount: newCount });
     }
   };
 
@@ -385,7 +414,26 @@ export default function CallingPage() {
         </div>
       ),
     },
-    { key: "phone", label: "Phone", render: (row: any) => <span className="text-sm">{row.phone || "-"}</span> },
+    {
+      key: "phone",
+      label: "Phone",
+      render: (row: any) => (
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedLeadPhone(row.phone || "");
+            setSelectedLeadName(row.name || "");
+            setSelectedLeadId(row.id);
+            setShowWhatsApp(true);
+          }}
+          className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer text-left"
+          title="Click to message on WhatsApp"
+        >
+          <MessageSquare className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+          <span>{row.phone || "-"}</span>
+        </button>
+      )
+    },
     { key: "email", label: "Email", render: (row: any) => <span className="text-sm">{row.email || "-"}</span> },
     { key: "assignedToName", label: "Executive", render: (row: any) => <span className="text-xs">{row.assignedToName || "-"}</span> },
       { key: "remarks", label: "Remarks", render: (row: any) => <span className="text-xs truncate max-w-[120px] inline-block" title={row.remarks}>{row.remarks || "-"}</span> },
@@ -613,7 +661,14 @@ export default function CallingPage() {
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
-              <span>WhatsApp Templates</span>
+              <div>
+                <span>WhatsApp Templates</span>
+                {selectedLeadName && (
+                  <p className="text-xs font-normal text-slate-500 mt-0.5">
+                    To: <strong className="text-slate-800 dark:text-slate-200">{selectedLeadName}</strong> ({"+" + (getWhatsAppPhone(selectedLeadPhone, callingLeads.find(l => l.id === selectedLeadId)) || selectedLeadPhone)})
+                  </p>
+                )}
+              </div>
               <Button size="sm" onClick={() => {
                 setEditingTemplate(null);
                 setTemplateForm({ name: "", message: "" });
