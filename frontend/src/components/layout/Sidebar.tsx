@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Target, CheckSquare, BarChart3,
   Calendar, Bell, Settings, Phone, UserCog, Briefcase,
   Map, ChevronLeft, ChevronRight, LogOut, Shield, User,
-  Menu, X, FileSignature, Globe, Lock
+  Menu, X, FileSignature, Globe, Lock, Landmark
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -27,8 +27,9 @@ const navItems: NavItem[] = [
   { label: "CRM Pipeline", href: "/crm", icon: Briefcase, permission: "crm" },
   { label: "Tasks", href: "/tasks", icon: CheckSquare, permission: "tasks" },
   { label: "Employees", href: "/employees", icon: Users, permission: "employees" },
-  { label: "Data Scraper", href: "/scraper", icon: Map, permission: "scraper" },
+  { label: "Data Scraper & Excel", href: "/scraper", icon: Map, permission: "scraper" },
   { label: "Calling Panel", href: "/calling", icon: Phone, permission: "calling" },
+  { label: "Finance Dept", href: "/finance", icon: Landmark, permission: "finance" },
   { label: "Operations", href: "/operations", icon: Briefcase, permission: "operations" },
   { label: "Client Portal", href: "/client-portal", icon: Globe, permission: "client_portal" },
   { label: "HR Module", href: "/hr", icon: UserCog, permission: "hr" },

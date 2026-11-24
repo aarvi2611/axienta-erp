@@ -417,43 +417,43 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ceo: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling", "hr",
-    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
+    "operations", "client_portal", "scraper", "finance", "profile", "create_users", "manage_roles",
     "view_analytics", "approve_work", "assign_tasks", "manage_all", "letters"
   ],
   CEO: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling", "hr",
-    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
+    "operations", "client_portal", "scraper", "finance", "profile", "create_users", "manage_roles",
     "view_analytics", "approve_work", "assign_tasks", "manage_all", "letters"
   ],
   Executive: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling", "hr",
-    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
+    "operations", "client_portal", "scraper", "finance", "profile", "create_users", "manage_roles",
     "view_analytics", "approve_work", "assign_tasks", "manage_all", "letters"
   ],
   admin: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling", "hr",
-    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
+    "operations", "client_portal", "scraper", "finance", "profile", "create_users", "manage_roles",
     "view_analytics", "approve_work", "assign_tasks", "letters"
   ],
   Admin: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling", "hr",
-    "operations", "client_portal", "scraper", "profile", "create_users", "manage_roles",
+    "operations", "client_portal", "scraper", "finance", "profile", "create_users", "manage_roles",
     "view_analytics", "approve_work", "assign_tasks", "letters"
   ],
   head_manager: [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling",
-    "operations", "client_portal", "scraper", "profile", "create_users",
+    "operations", "client_portal", "scraper", "finance", "profile", "create_users",
     "view_analytics", "approve_work", "assign_tasks", "letters"
   ],
   "Head Manager": [
     "dashboard", "leads", "crm", "tasks", "employees", "reports",
     "attendance", "notifications", "settings", "calling",
-    "operations", "client_portal", "scraper", "profile", "create_users",
+    "operations", "client_portal", "scraper", "finance", "profile", "create_users",
     "view_analytics", "approve_work", "assign_tasks", "letters"
   ],
   team_manager: [
@@ -465,10 +465,10 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "notifications", "profile", "assign_tasks", "approve_work"
   ],
   sales_executive: [
-    "dashboard", "leads", "crm", "calling", "tasks", "notifications", "profile"
+    "dashboard", "leads", "crm", "calling", "tasks", "scraper", "notifications", "profile"
   ],
   "Sales Executive": [
-    "dashboard", "leads", "crm", "calling", "tasks", "notifications", "profile"
+    "dashboard", "leads", "crm", "calling", "tasks", "scraper", "notifications", "profile"
   ],
   calling_executive: [
     "dashboard", "leads", "calling", "tasks", "notifications", "profile"
@@ -483,10 +483,10 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "dashboard", "scraper", "leads", "tasks", "notifications", "profile"
   ],
   operations: [
-    "dashboard", "operations", "client_portal", "leads", "tasks", "notifications", "profile"
+    "dashboard", "operations", "client_portal", "finance", "leads", "tasks", "notifications", "profile"
   ],
   "Operations Team": [
-    "dashboard", "operations", "client_portal", "leads", "tasks", "notifications", "profile"
+    "dashboard", "operations", "client_portal", "finance", "leads", "tasks", "notifications", "profile"
   ],
   hr: [
     "dashboard", "hr", "employees", "attendance", "tasks",

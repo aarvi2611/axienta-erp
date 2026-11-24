@@ -25,9 +25,11 @@ export const routePermissions: Record<string, Role[]> = {
   '/hr': ['CEO', 'Admin', 'Head Manager', 'HR'],
   '/letters': ['CEO', 'Admin', 'Head Manager', 'HR'],
   '/operations': ['CEO', 'Admin', 'Head Manager', 'Operations Team'],
+  '/finance': ['CEO', 'Admin', 'Head Manager', 'Operations Team'],
   '/clients': ['CEO', 'Admin', 'Head Manager', 'Operations Team'],
   '/client-portal': ['CEO', 'Admin', 'Head Manager', 'Operations Team'],
-  '/data-scraper': ['CEO', 'Admin', 'Head Manager', 'Team Manager', 'Data Scraper']
+  '/data-scraper': ['CEO', 'Admin', 'Head Manager', 'Team Manager', 'Data Scraper', 'Sales Executive'],
+  '/scraper': ['CEO', 'Admin', 'Head Manager', 'Team Manager', 'Data Scraper', 'Sales Executive']
 };
 
 export const canAccess = (role: Role | string | undefined, path: string) => !!role && (routePermissions[path] || roles).includes(role as Role);
